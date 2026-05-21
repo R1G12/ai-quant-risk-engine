@@ -1,0 +1,5 @@
+polars>=0.20.0
+transformers>=4.45.0
+dvclive>=3.0.0
+pyyaml>=6.0
+pydantic>=2.7.0

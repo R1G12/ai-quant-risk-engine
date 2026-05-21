@@ -10,8 +10,9 @@ from typing import Final
 PROJECT_ROOT: Final[Path] = Path(__file__).resolve().parents[2]
 
 # Default log directory – can be overridden by the LOG_DIR env var
+import os
 LOG_DIR: Final[Path] = Path(
-    sys.getenv("LOG_DIR", str(PROJECT_ROOT / "logs"))
+    os.getenv("LOG_DIR", str(PROJECT_ROOT / "logs"))
 ).expanduser().resolve()
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 

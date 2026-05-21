@@ -26,3 +26,8 @@ def ensure_dir(path: Union[pathlib.Path, str]) -> pathlib.Path:
     p = pathlib.Path(path).expanduser().resolve()
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+# Additional useful paths
+LOGS_DIR = PROJECT_ROOT / "logs"
+RAW_NEWS_PATH = RAW_DATA_DIR / "news.csv"
+PROCESSED_NEWS_PATH = PROCESSED_DATA_DIR / "news.parquet"
