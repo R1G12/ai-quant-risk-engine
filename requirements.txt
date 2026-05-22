@@ -12,3 +12,6 @@ statsmodels>=0.14.0
 plotly>=5.0.0
 pandas>=2.0.0
 numpy>=1.24.0
+nbformat>=5.0.0
+jupyterlab>=3.0.0
+ipykernel>=6.0.0
