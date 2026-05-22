@@ -1,0 +1,9 @@
+[project]
+name = "ai-quant-risk-engine"
+version = "0.1.0"
+dependencies = [
+    "numpy==1.26.4",
+    "transformers",
+    "pandas",
+    "scikit-learn"
+]

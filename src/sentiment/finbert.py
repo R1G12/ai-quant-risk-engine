@@ -23,6 +23,7 @@ from typing import List
 import polars as pl
 from transformers import pipeline, Pipeline
 from dvclive import Live
+import logging
 
 from src.utils.paths import PROCESSED_DATA_DIR, METRICS_DIR
 from src.utils.logger import get_logger
@@ -157,20 +158,26 @@ def run_sentiment(
     LOGGER.info("Sentiment results written", extra={"rows": df_sent.height, "path": str(out)})
 
     # -------------------------------------------------------------------
-    # DVCLive metrics – we log the mean positive confidence. FinBERT uses
-    # three labels: ``positive``, ``negative`` and ``neutral``. For a quick
-    # health check we compute the average score for the *positive* label.
-    # -------------------------------------------------------------------
-    with Live(metrics_dir) as live:
-        # Extract scores for rows labelled "positive"
-        pos_scores = [r["score"] for r in results if r["label"].lower() == "positive"]
-        avg_pos = sum(pos_scores) / len(pos_scores) if pos_scores else 0.0
-        live.log_metric("avg_positive_score", avg_pos)
-        live.log_metric("total_rows", df_sent.height)
-        LOGGER.info(
-            "DVCLive metrics logged",
-            extra={"avg_positive_score": avg_pos, "total_rows": df_sent.height},
-        )
+    # DVCLive metrics – log mean positive confidence safely.
+    # Ensure any open file handlers (e.g., the JSON logger) are flushed and closed before DVCLive runs.
+    for handler in list(LOGGER.handlers):
+        if isinstance(handler, logging.FileHandler):
+            handler.flush()
+            handler.close()
+            LOGGER.removeHandler(handler)
+
+    # Compute average positive confidence
+    pos_scores = [r["score"] for r in results if r["label"].lower() == "positive"]
+    avg_pos = sum(pos_scores) / len(pos_scores) if pos_scores else 0.0
+    # Log metric using DVCLive
+        # Log metric manually to avoid DVCLive DVC integration issues
+    import json
+    metrics_path = metrics_dir / "metrics.json"
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(metrics_path, "w", encoding="utf-8") as f:
+        json.dump({"avg_positive_score": avg_pos, "total_rows": df_sent.height}, f)
+    LOGGER.info("Metrics written manually", extra={"path": str(metrics_path)})
+
 
     return out
 

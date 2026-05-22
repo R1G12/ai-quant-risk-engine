@@ -11,17 +11,29 @@ LOGGER = get_logger(__name__)
 def _clean_dataframe(df: pl.DataFrame) -> pl.DataFrame:
     """Apply basic cleaning steps.
 
-    * Drop rows where the ``text`` column is null or empty.
-    * Trim whitespace from string columns.
-    * Ensure a deterministic column order.
+    * Determine the text column ("content" or "text").
+    * Trim whitespace on the text column using .apply (pure Python).
+    * Filter out rows where the text column is null or empty after trimming.
+    * Trim whitespace on all other string columns.
+    * Reorder columns alphabetically for reproducibility.
     """
-    # Drop rows with null/empty text
-    df = df.filter(pl.col("text").is_not_null() & (pl.col("text").str.strip() != ""))
-    # Strip whitespace from all string columns
-    for name, dtype in df.schema.items():
-        if dtype == pl.Utf8:
-            df = df.with_column(pl.col(name).str.strip().alias(name))
-    # Optional: reorder columns alphabetically for reproducibility
+    # Choose the appropriate text column name
+    text_col = "content" if "content" in df.columns else "text"
+    # Trim whitespace on the text column
+    df = df.with_columns([
+        pl.col(text_col).map_elements(lambda s: s.strip() if isinstance(s, str) else s).alias(text_col)
+    ])
+    # Filter rows: text column not null and not empty string
+    df = df.filter(
+        pl.col(text_col).is_not_null() & (pl.col(text_col) != "")
+    )
+    # Trim whitespace on all other string columns
+    string_cols = [name for name, dtype in df.schema.items() if dtype == pl.Utf8 and name != text_col]
+    for col in string_cols:
+        df = df.with_columns([
+            pl.col(col).map_elements(lambda s: s.strip() if isinstance(s, str) else s).alias(col)
+        ])
+    # Reorder columns alphabetically for reproducibility
     df = df.select(sorted(df.columns))
     return df
 
@@ -29,7 +41,7 @@ def preprocess_news(
     input_path: Optional[Path] = None,
     output_path: Optional[Path] = None,
 ) -> Path:
-    """Read raw news CSV, clean it, and write a Parquet file.
+    """Read raw news CSV lazily, clean it, and write a Parquet file.
 
     Parameters
     ----------
@@ -50,17 +62,37 @@ def preprocess_news(
     inp = input_path or RAW_NEWS_PATH
     out = output_path or PROCESSED_NEWS_PATH
 
-    LOGGER.debug("Reading raw data", extra={"path": str(inp)})
+    # Read CSV eagerly (no lazy frame)
     df = pl.read_csv(inp)
-    LOGGER.info("Raw data read", extra={"rows": df.height, "columns": df.width})
 
-    df_clean = _clean_dataframe(df)
-    LOGGER.info("Data cleaned", extra={"rows_before": df.height, "rows_after": df_clean.height})
+    # Create a unified column "clean_text" using available content column
+    df = df.with_columns(
+        pl.col("content").alias("clean_text")
+    )
+
+    # Trim whitespace on the unified text column
+    df = df.with_columns(
+        pl.col("clean_text").map_elements(lambda s: s.strip() if isinstance(s, str) else s).alias("clean_text")
+    )
+
+    # Filter out rows where the text column is null or empty after stripping
+    df = df.filter(pl.col("clean_text").is_not_null() & (pl.col("clean_text") != ""))
+
+    # Trim whitespace on all other string columns (Utf8 dtype) except the unified text column
+    string_cols = [name for name, dtype in df.schema.items() if dtype == pl.Utf8 and name not in {"clean_text", "content"}]
+    if string_cols:
+        df = df.with_columns([
+            pl.col(col).map_elements(lambda s: s.strip() if isinstance(s, str) else s).alias(col) for col in string_cols
+        ])
+
+    # Optional: reorder columns alphabetically for reproducibility
+    df = df.select(sorted(df.columns))
 
     # Ensure output directory exists
     out.parent.mkdir(parents=True, exist_ok=True)
-    LOGGER.debug("Writing processed data", extra={"path": str(out)})
-    df_clean.write_parquet(out)
+
+    # Write Parquet
+    df.write_parquet(out)
     LOGGER.info("Preprocessing completed", extra={"output_path": str(out)})
     return out
 

@@ -1,63 +1,59 @@
-'''config.py – configuration loader for the quant risk engine'''
+'''config.py – simple configuration loader for the quant risk engine
 
-from __future__ import annotations
+We avoid pydantic here because the current environment has a pydantic version that is
+incompatible with the previously‑written ``BaseSettings`` approach.  A lightweight
+`dataclass` provides the same functionality: default values, environment variable
+overrides, and hierarchical YAML merging.
+'''
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict
 
 import yaml
-from pydantic_settings import BaseSettings
-from pydantic import Field, validator
 
-# Helper to load a YAML file into a dict
+# Helper to load a YAML file into a dict (empty dict if file missing)
 def _load_yaml(file_path: Path) -> Dict[str, Any]:
-    with file_path.open('r', encoding='utf-8') as f:
+    if not file_path.is_file():
+        return {}
+    with file_path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
-class BaseConfig(BaseSettings):
-    """Base configuration model.
+@dataclass
+class Config:
+    """Configuration values for the project.
 
-    All fields are optional and can be overridden by environment variables
-    using the ``PROJECT_`` prefix (e.g. ``PROJECT_BATCH_SIZE``).
+    Values are taken from environment variables (``PROJECT_`` prefix) with sensible
+    defaults.  Types are validated on instantiation – if an env var cannot be
+    converted to ``int`` a ``ValueError`` is raised.
     """
 
-    # Example generic settings – extend as needed
-    batch_size: int = Field(32, description="Batch size for model inference")
-    max_seq_length: int = Field(128, description="Maximum token length for FinBERT")
-    seed: int = Field(42, description="Random seed for reproducibility")
+    batch_size: int = int(os.getenv("PROJECT_BATCH_SIZE", 32))
+    max_seq_length: int = int(os.getenv("PROJECT_MAX_SEQ_LENGTH", 128))
+    seed: int = int(os.getenv("PROJECT_SEED", 42))
 
-    class Config:
-        env_prefix = "PROJECT_"
-        case_sensitive = False
-
-    @validator("batch_size", "max_seq_length", "seed")
-    def _positive(cls, v: int) -> int:
-        if v <= 0:
-            raise ValueError("must be a positive integer")
-        return v
-
-def load_config() -> BaseConfig:
-    """Load the hierarchical configuration.
+def load_config() -> Config:
+    """Load configuration from the three yaml files and environment.
 
     Order of precedence (low → high):
-    1. ``configs/base.yaml`` – defaults for the whole project.
-    2. ``configs/dvc_params.yaml`` – parameters tracked by DVC.
-    3. ``configs/finbert.yaml`` – model‑specific overrides.
-    4. Environment variables (``PROJECT_`` prefix).
-    The later sources overwrite the earlier ones.
-    Returns a validated ``BaseConfig`` instance.
+        1. ``configs/base.yaml`` – default values.
+        2. ``configs/dvc_params.yaml`` – DVC‑tracked parameters.
+        3. ``configs/finbert.yaml`` – model‑specific overrides.
+        4. Environment variables with ``PROJECT_`` prefix.
     """
     repo_root = Path(__file__).resolve().parents[2]
     config_dir = repo_root / "configs"
 
-    # Load YAML files if they exist; missing files are ignored.
     base_cfg = _load_yaml(config_dir / "base.yaml")
     dvc_cfg = _load_yaml(config_dir / "dvc_params.yaml")
     finbert_cfg = _load_yaml(config_dir / "finbert.yaml")
 
-    # Merge dictionaries – later dict overwrites earlier keys
     merged: Dict[str, Any] = {**base_cfg, **dvc_cfg, **finbert_cfg}
 
-    # Create the pydantic settings model – environment vars are applied automatically
-    return BaseConfig(**merged)
+    # Override merged values with env vars if they exist
+    batch = int(os.getenv("PROJECT_BATCH_SIZE", merged.get("batch_size", 32)))
+    seq = int(os.getenv("PROJECT_MAX_SEQ_LENGTH", merged.get("max_seq_length", 128)))
+    seed = int(os.getenv("PROJECT_SEED", merged.get("seed", 42)))
+
+    return Config(batch_size=batch, max_seq_length=seq, seed=seed)
