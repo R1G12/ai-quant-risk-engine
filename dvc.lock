@@ -1,0 +1,95 @@
+schema: '2.0'
+stages:
+  ingest:
+    cmd: python -m src.ingestion.ingest
+    deps:
+    - path: configs/
+      hash: md5
+      md5: 728d608e89610dd66955107662223fdc.dir
+      size: 144
+      nfiles: 3
+    - path: src/ingestion/
+      hash: md5
+      md5: 7a0e500f2f2670a291bf1277c9e1b7b4.dir
+      size: 11618
+      nfiles: 6
+    - path: src/utils/
+      hash: md5
+      md5: 1b49c17ee951c6f3f434b51eab3fabd1.dir
+      size: 21739
+      nfiles: 12
+    params:
+      params.yaml:
+        ingestion.seed: 42
+    outs:
+    - path: data/raw/news.csv
+      hash: md5
+      md5: be7690a031b3164a4633f45e90b7717b
+      size: 571
+  preprocess:
+    cmd: python -m src.preprocessing.preprocess
+    deps:
+    - path: configs/
+      hash: md5
+      md5: 728d608e89610dd66955107662223fdc.dir
+      size: 144
+      nfiles: 3
+    - path: data/raw/news.csv
+      hash: md5
+      md5: be7690a031b3164a4633f45e90b7717b
+      size: 571
+    - path: src/preprocessing/
+      hash: md5
+      md5: e4e74dfd365198173ed5dd4039c42e48.dir
+      size: 12791
+      nfiles: 6
+    - path: src/utils/
+      hash: md5
+      md5: 1b49c17ee951c6f3f434b51eab3fabd1.dir
+      size: 21739
+      nfiles: 12
+    params:
+      params.yaml:
+        preprocessing.seed: 42
+    outs:
+    - path: data/processed/news.parquet
+      hash: md5
+      md5: 948110edf044b4222da9e28da60f6fc6
+      size: 3739
+  sentiment:
+    cmd: python -m src.sentiment.finbert
+    deps:
+    - path: configs/
+      hash: md5
+      md5: 728d608e89610dd66955107662223fdc.dir
+      size: 144
+      nfiles: 3
+    - path: data/processed/news.parquet
+      hash: md5
+      md5: 948110edf044b4222da9e28da60f6fc6
+      size: 3739
+    - path: src/sentiment/
+      hash: md5
+      md5: 094e329ada7c146cdb095c24cf60a9fc.dir
+      size: 20616
+      nfiles: 6
+    - path: src/utils/
+      hash: md5
+      md5: 1b49c17ee951c6f3f434b51eab3fabd1.dir
+      size: 21739
+      nfiles: 12
+    params:
+      params.yaml:
+        sentiment.batch_size: 32
+        sentiment.max_seq_length: 128
+        sentiment.model_name: ProsusAI/finbert
+    outs:
+    - path: data/processed/sentiment.parquet
+      hash: md5
+      md5: ab52e61851fb3624086e12856bad68b1
+      size: 4499
+    - path: metrics/sentiment/
+      hash: md5
+      md5: cee54187d5f9637e65523e1d654032e2.dir
+      size: 143
+      nfiles: 3

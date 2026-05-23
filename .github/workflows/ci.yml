@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, Romain_Phase_1]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test-and-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package
+        run: |
+          pip install -e ".[dev]"
+
+      - name: Run pytest
+        run: pytest -q
+
+      - name: DVC repro (ingest + preprocess)
+        run: |
+          dvc repro ingest preprocess

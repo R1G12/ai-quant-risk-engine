@@ -1,46 +1,41 @@
-'''config.py – simple configuration loader for the quant risk engine
+"""Configuration loader with YAML merge and environment overrides."""
 
-We avoid pydantic here because the current environment has a pydantic version that is
-incompatible with the previously‑written ``BaseSettings`` approach.  A lightweight
-`dataclass` provides the same functionality: default values, environment variable
-overrides, and hierarchical YAML merging.
-'''
+from __future__ import annotations
 
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import yaml
 
-# Helper to load a YAML file into a dict (empty dict if file missing)
-def _load_yaml(file_path: Path) -> Dict[str, Any]:
+
+def _load_yaml(file_path: Path) -> dict[str, Any]:
+    """Load a YAML file into a dict (empty dict if missing)."""
     if not file_path.is_file():
         return {}
     with file_path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
+
 @dataclass
 class Config:
-    """Configuration values for the project.
+    """Runtime configuration for pipeline stages."""
 
-    Values are taken from environment variables (``PROJECT_`` prefix) with sensible
-    defaults.  Types are validated on instantiation – if an env var cannot be
-    converted to ``int`` a ``ValueError`` is raised.
-    """
+    batch_size: int = 32
+    max_seq_length: int = 128
+    seed: int = 42
+    model_name: str = "ProsusAI/finbert"
 
-    batch_size: int = int(os.getenv("PROJECT_BATCH_SIZE", 32))
-    max_seq_length: int = int(os.getenv("PROJECT_MAX_SEQ_LENGTH", 128))
-    seed: int = int(os.getenv("PROJECT_SEED", 42))
 
 def load_config() -> Config:
-    """Load configuration from the three yaml files and environment.
+    """Load configuration from YAML files and environment variables.
 
-    Order of precedence (low → high):
-        1. ``configs/base.yaml`` – default values.
-        2. ``configs/dvc_params.yaml`` – DVC‑tracked parameters.
-        3. ``configs/finbert.yaml`` – model‑specific overrides.
-        4. Environment variables with ``PROJECT_`` prefix.
+    Order of precedence (low to high):
+        1. configs/base.yaml
+        2. configs/dvc_params.yaml
+        3. configs/finbert.yaml
+        4. PROJECT_* environment variables
     """
     repo_root = Path(__file__).resolve().parents[2]
     config_dir = repo_root / "configs"
@@ -49,11 +44,16 @@ def load_config() -> Config:
     dvc_cfg = _load_yaml(config_dir / "dvc_params.yaml")
     finbert_cfg = _load_yaml(config_dir / "finbert.yaml")
 
-    merged: Dict[str, Any] = {**base_cfg, **dvc_cfg, **finbert_cfg}
+    merged: dict[str, Any] = {**base_cfg, **dvc_cfg, **finbert_cfg}
 
-    # Override merged values with env vars if they exist
     batch = int(os.getenv("PROJECT_BATCH_SIZE", merged.get("batch_size", 32)))
     seq = int(os.getenv("PROJECT_MAX_SEQ_LENGTH", merged.get("max_seq_length", 128)))
     seed = int(os.getenv("PROJECT_SEED", merged.get("seed", 42)))
+    model = os.getenv("PROJECT_MODEL_NAME", merged.get("model_name", "ProsusAI/finbert"))
 
-    return Config(batch_size=batch, max_seq_length=seq, seed=seed)
+    return Config(
+        batch_size=batch,
+        max_seq_length=seq,
+        seed=seed,
+        model_name=str(model),
+    )

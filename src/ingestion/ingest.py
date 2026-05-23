@@ -18,13 +18,12 @@ Running the module as a script will also invoke ``fetch_news`` via ``python -m``
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import List, Mapping
 
 import polars as pl
 
-from src.utils.paths import RAW_DATA_DIR, LOGS_DIR
+from src.utils.paths import RAW_DATA_DIR
 from src.utils.logger import get_logger
 
 LOGGER = get_logger(__name__)

@@ -1,17 +1,10 @@
+# Core pipeline (mirrors pyproject.toml [project.dependencies])
 polars>=0.20.0
-transformers>=4.45.0
-dvclive>=3.0.0
-pyyaml>=6.0
-pydantic>=2.7.0
-torch>=2.0.0
-yfinance>=0.2.0
-arch>=5.0.0
-hmmlearn>=0.2.8
-scipy>=1.10.0
-statsmodels>=0.14.0
-plotly>=5.0.0
-pandas>=2.0.0
 numpy>=1.24.0
-nbformat>=5.0.0
-jupyterlab>=3.0.0
-ipykernel>=6.0.0
+transformers>=4.45.0
+torch>=2.0.0
+pyyaml>=6.0
+dvclive>=3.0.0
+dvc>=3.0.0
+
+# Editable install: pip install -e ".[dev,notebook]"

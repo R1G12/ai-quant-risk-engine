@@ -1,1 +1,22 @@
-.venv
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+.env
+.env.local
+
+logs/
+.dvc/cache/
+.dvc/tmp/
+
+data/raw/news.csv
+data/processed/
+models/
+reports/
+
+# Hugging Face cache (optional local override)
+# .cache/huggingface/

@@ -1,5 +1,44 @@
+stages:
+  ingest:
+    cmd: python -m src.ingestion.ingest
+    deps:
+      - src/ingestion/
+      - src/utils/
+      - configs/
+    params:
+      - ingestion.seed
+    outs:
+      - data/raw/news.csv
+
+  preprocess:
+    cmd: python -m src.preprocessing.preprocess
+    deps:
+      - data/raw/news.csv
+      - src/preprocessing/
+      - src/utils/
+      - configs/
+    params:
+      - preprocessing.seed
+    outs:
+      - data/processed/news.parquet
+
+  sentiment:
+    cmd: python -m src.sentiment.finbert
+    deps:
+      - data/processed/news.parquet
+      - src/sentiment/
+      - src/utils/
+      - configs/
+    params:
+      - sentiment.batch_size
+      - sentiment.max_seq_length
+      - sentiment.model_name
+    outs:
+      - data/processed/sentiment.parquet
+      - metrics/sentiment/
+
 metrics:
-- metrics/sentiment/metrics.json
+  - metrics/sentiment/metrics.json
 plots:
-- metrics/sentiment/plots/metrics:
-    x: step
+  - metrics/sentiment/plots/metrics:
+      x: step
