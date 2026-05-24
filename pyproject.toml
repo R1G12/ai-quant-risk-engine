@@ -4,12 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-quant-risk-engine"
-version = "0.1.0"
+version = "0.2.0"
 description = "Financial sentiment and risk modeling platform for hedge-fund analytics"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "polars>=0.20.0",
+    "pyarrow>=14.0.0",
     "numpy>=1.24.0",
     "transformers>=4.45.0",
     "torch>=2.0.0",
@@ -21,6 +22,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
+]
+market = [
+    "yfinance>=0.2.0",
 ]
 notebook = [
     "pandas>=2.0.0",

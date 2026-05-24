@@ -2,59 +2,75 @@
 
 ## Overview
 
-The AI Quant Risk Engine separates **exploration** (notebooks) from **production** (`src/`). Phase 1 implements a linear data pipeline for financial news sentiment.
+The AI Quant Risk Engine separates **exploration** (notebooks) from **production** (`src/`). Phase 1 covers financial news sentiment; Phase 2 adds a scalable market data and feature engineering platform.
 
 ```mermaid
 flowchart TB
-  subgraph phase1 [Phase 1]
+  subgraph phase1 [Phase1_Sentiment]
     ingest[ingestion.ingest]
     preprocess[preprocessing.preprocess]
     sentiment[sentiment.finbert]
     ingest --> preprocess --> sentiment
   end
-  subgraph utils [Shared]
-    config[utils.config]
-    logger[utils.logger]
-    paths[utils.paths]
+  subgraph phase2 [Phase2_MarketFeatures]
+    mIngest[market.ingest]
+    mClean[market.clean]
+    returns[features.returns]
+    volFeat[features.volatility]
+    techFeat[features.technical]
+    sentFeat[features.sentiment_agg]
+    merge[features.merge]
+    mIngest --> mClean --> returns --> volFeat --> techFeat
+    sentiment -.-> sentFeat
+    volFeat --> merge
+    techFeat --> merge
+    sentFeat --> merge
   end
-  ingest --> utils
-  preprocess --> utils
-  sentiment --> utils
+  merge --> riskOut[risk_dataset]
 ```
 
 ## Modules
 
 | Package | Responsibility |
 |---------|----------------|
-| `src.ingestion` | Load or generate raw financial news (CSV) |
-| `src.preprocessing` | Clean text, canonical `text` column, Parquet output |
-| `src.sentiment` | FinBERT inference, sentiment columns, DVCLive metrics |
-| `src.utils` | Paths, YAML config merge, structured logging |
-| `src.risk` | Phase 2 – VaR, GARCH, regime models |
-| `src.portfolio` | Phase 2 – optimization, constraints |
-| `src.visualization` | Phase 2 – reports and charts |
+| `src.ingestion` | Sample / future API news ingestion |
+| `src.preprocessing` | News cleaning → canonical `text` |
+| `src.sentiment` | FinBERT inference |
+| `src.market` | OHLCV ingest, clean, partitioned parquet lake |
+| `src.features` | Returns, volatility, technical, sentiment agg, merge |
+| `src.schemas` | Column contracts |
+| `src.validation` | Schema checks |
+| `src.risk` | Phase 2b – VaR, GARCH, regimes |
+| `src.portfolio` | Phase 2b – optimization |
 
-## Data flow
+## Data schemas (summary)
 
-1. **Raw**: `data/raw/news.csv` – columns `date`, `source`, `title`, `content`
-2. **Processed**: `data/processed/news.parquet` – adds canonical `text` (trimmed, non-empty)
-3. **Sentiment**: `data/processed/sentiment.parquet` – adds `sentiment_label`, `sentiment_score`
-4. **Metrics**: `metrics/sentiment/metrics.json` – DVCLive (`avg_positive_score`, `total_rows`)
+| Dataset | Key columns |
+|---------|-------------|
+| Market (clean) | `timestamp`, `ticker`, `open`, `high`, `low`, `close`, `volume` |
+| Market (features) | + `returns`, `log_returns`, `volatility`, `rolling_sharpe`, … |
+| Sentiment agg | `timestamp`, `ticker`, `confidence`, `bullish_ratio` |
+| Risk dataset | Join on `timestamp`, `ticker` |
 
-## Technology choices
+Full definitions: [`configs/schemas/`](../configs/schemas/) and [data_architecture.md](data_architecture.md).
 
-- **Polars**: columnar, fast I/O; used for all `src/` tabular work
-- **Parquet**: compressed columnar storage for processed artifacts
-- **Hugging Face Transformers**: FinBERT sentiment pipeline
-- **DVC**: reproducible stages, parameter and output tracking
-- **DVCLive**: metrics logging (`save_dvc_exp=False` to avoid experiment stash issues on Windows)
+## Partitioning
+
+`data/processed/market/year=YYYY/month=MM/*.parquet`
+
+## Technology
+
+- **Polars** LazyFrame-first ([polars_guidelines.md](polars_guidelines.md))
+- **Parquet** + zstd compression
+- **DVC** reproducible stages
+- **Hugging Face** FinBERT (Phase 1)
+- **yfinance** optional market source (pandas boundary in adapter only)
 
 ## Phase boundaries
 
 | Phase | Scope |
 |-------|--------|
-| 1 | Ingest → preprocess → FinBERT sentiment |
-| 2 | Market data, risk metrics, portfolio in `src/` |
+| 1 | News sentiment |
+| 2 | Market lake + feature store + `risk_dataset` |
+| 2b | Risk models + portfolio |
 | 3 | Private-markets Monte Carlo research |
-
-Notebooks under `notebooks/` may prototype Phase 2 logic but must not become the production entry point.

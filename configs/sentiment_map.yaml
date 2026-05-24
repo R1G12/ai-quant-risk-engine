@@ -1,0 +1,6 @@
+# Map news source names to tickers for sentiment aggregation.
+source_to_ticker:
+  Bloomberg: AAPL
+  Reuters: XOM
+  "Financial Times": GS
+default_ticker: MARKET

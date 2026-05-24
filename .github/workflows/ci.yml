@@ -9,6 +9,8 @@ on:
 jobs:
   test-and-pipeline:
     runs-on: ubuntu-latest
+    env:
+      MARKET_SOURCE: sample
 
     steps:
       - uses: actions/checkout@v4
@@ -20,12 +22,16 @@ jobs:
           cache: pip
 
       - name: Install package
-        run: |
-          pip install -e ".[dev]"
+        run: pip install -e ".[dev]"
 
       - name: Run pytest
         run: pytest -q
 
-      - name: DVC repro (ingest + preprocess)
+      - name: DVC repro Phase 1
+        run: dvc repro ingest preprocess
+
+      - name: DVC repro Phase 2 sample pipeline
         run: |
-          dvc repro ingest preprocess
+          dvc repro ingest_market_data clean_market_data generate_returns
+          dvc repro generate_volatility_features generate_technical_features
+          dvc repro generate_sentiment_features merge_features --force

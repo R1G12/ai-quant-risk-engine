@@ -2,32 +2,37 @@
 
 ## Phase 1 – Financial Sentiment Engine (complete)
 
-- [x] Project scaffold and `src/` modules
 - [x] DVC pipeline: ingest → preprocess → sentiment
-- [x] FinBERT via Hugging Face `transformers.pipeline`
-- [x] Polars + Parquet data layer
-- [x] DVCLive metrics
-- [x] Config YAML + `params.yaml`
-- [x] Tests and CI (pytest + fast DVC stages)
-- [x] Documentation (README, docs/)
+- [x] FinBERT + DVCLive
+- [x] Polars + Parquet
+- [x] Tests and CI
 
-## Phase 2 – Risk and portfolio (planned)
+## Phase 2 – Market data and feature engineering (complete)
 
-- Move notebook prototypes from `notebooks/trading_risk_manager.ipynb` into `src/risk` and `src/portfolio`
-- Market data ingestion (e.g. yfinance or vendor API)
-- VaR / CVaR, volatility (GARCH), regime detection (HMM)
-- Portfolio optimization (mean-variance, constraints)
-- DVC stages for risk and portfolio artifacts
-- Polars-native refactor of notebook pandas code
+- [x] Partitioned market parquet lake (`year=YYYY/month=MM`)
+- [x] Dual ingestion: `sample` (CI) + `yfinance` (local)
+- [x] Feature modules: returns, volatility, Sharpe, technical, liquidity, correlation
+- [x] Sentiment aggregation with `configs/sentiment_map.yaml`
+- [x] DVC stages through `merge_features`
+- [x] `risk_dataset.parquet` + metadata
+- [x] Docs: `data_architecture.md`, `polars_guidelines.md`, `feature_store.md`
+- [x] Schema validation + expanded tests
 
-## Phase 3 – Private markets and simulation (research)
+## Phase 2b – Risk and portfolio (planned)
 
-- Sparse quarterly/annual fundamentals → large Monte Carlo ensembles
-- Quantum Amplitude Estimation (QAE) for simulation speedup (research track)
-- Integration with sentiment and risk signals for private-equity-style workflows
+- Port notebook risk logic into `src/risk` and `src/portfolio`
+- VaR / CVaR, GARCH, HMM regimes
+- Portfolio optimization consuming `risk_dataset`
+- Populate portfolio schema
 
-## Non-goals (Phase 1)
+## Phase 3 – Private markets (research)
 
-- Live trading execution
-- Production Bloomberg/Reuters feeds
-- Quantum hardware integration
+- Sparse fundamentals → Monte Carlo at scale
+- Quantum Amplitude Estimation research track
+
+## Stretch / backlog
+
+- Migrate Phase 1 news from CSV → `data/raw/news/*.parquet`
+- `sink_parquet(partition_by)` when Polars version supports it uniformly
+- HF embeddings (`embedding_id` column)
+- DVC remote storage

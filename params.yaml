@@ -6,3 +6,26 @@ sentiment:
   batch_size: 32
   max_seq_length: 128
   model_name: ProsusAI/finbert
+market:
+  source: sample
+  tickers:
+    - AAPL
+    - MSFT
+    - XOM
+    - GS
+    - JPM
+  start_date: "2024-01-01"
+  end_date: "2024-03-31"
+  partition_freq: month
+  compression: zstd
+  default_sentiment_ticker: MARKET
+features:
+  volatility_window: 21
+  sharpe_window: 63
+  risk_free_rate: 0.05
+  momentum_window: 12
+  sma_windows:
+    - 10
+    - 20
+  correlation_window: 30
+  annualization_factor: 252

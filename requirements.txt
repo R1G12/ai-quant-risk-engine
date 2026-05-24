@@ -1,5 +1,6 @@
-# Core pipeline (mirrors pyproject.toml [project.dependencies])
+# Core (mirrors pyproject.toml)
 polars>=0.20.0
+pyarrow>=14.0.0
 numpy>=1.24.0
 transformers>=4.45.0
 torch>=2.0.0
@@ -7,4 +8,4 @@ pyyaml>=6.0
 dvclive>=3.0.0
 dvc>=3.0.0
 
-# Editable install: pip install -e ".[dev,notebook]"
+# Install: pip install -e ".[dev,market,notebook]"

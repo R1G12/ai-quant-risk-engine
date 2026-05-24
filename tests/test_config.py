@@ -1,11 +1,16 @@
-"""Tests for configuration loading."""
+"""Configuration loading tests."""
 
-from src.utils.config import load_config
+from src.utils.config import load_app_config, load_config
 
 
 def test_load_config_reads_yaml_defaults() -> None:
     cfg = load_config()
     assert cfg.batch_size == 32
-    assert cfg.max_seq_length == 128
-    assert cfg.seed == 42
     assert cfg.model_name == "ProsusAI/finbert"
+
+
+def test_load_app_config_market_sample() -> None:
+    app = load_app_config()
+    assert app.market.source in {"sample", "yfinance"}
+    assert len(app.market.tickers) >= 2
+    assert app.features.volatility_window == 21

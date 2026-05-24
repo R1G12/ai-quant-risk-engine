@@ -1,78 +1,64 @@
 # MLOps
 
-## Pipeline (DVC)
+## Pipelines (DVC)
 
-Defined in [`dvc.yaml`](../dvc.yaml):
+Defined in [`dvc.yaml`](../dvc.yaml).
+
+### Phase 1 – Sentiment
 
 | Stage | Command | Outputs |
 |-------|---------|---------|
 | `ingest` | `python -m src.ingestion.ingest` | `data/raw/news.csv` |
 | `preprocess` | `python -m src.preprocessing.preprocess` | `data/processed/news.parquet` |
-| `sentiment` | `python -m src.sentiment.finbert` | `data/processed/sentiment.parquet`, `metrics/sentiment/` |
+| `sentiment` | `python -m src.sentiment.finbert` | `data/processed/sentiment.parquet` |
 
-Dependencies between stages are explicit in `dvc.yaml` (`deps` / `outs`).
+### Phase 2 – Market features
+
+| Stage | Command | Outputs |
+|-------|---------|---------|
+| `ingest_market_data` | `python -m src.market.ingest` | `data/raw/market/` |
+| `clean_market_data` | `python -m src.market.clean` | `data/processed/market/` |
+| `generate_returns` | `python -m src.features.pipeline.returns_stage` | `data/features/returns/` |
+| `generate_volatility_features` | `python -m src.features.pipeline.volatility_stage` | `data/features/volatility/` |
+| `generate_technical_features` | `python -m src.features.pipeline.technical_stage` | `data/features/technical/` |
+| `generate_sentiment_features` | `python -m src.features.pipeline.sentiment_stage` | `data/features/sentiment_agg/` |
+| `merge_features` | `python -m src.features.pipeline.merge_stage` | `data/features/merged/` |
 
 ## Parameters
 
-- [`params.yaml`](../params.yaml) – DVC-tracked hierarchical params
-- [`configs/base.yaml`](../configs/base.yaml) – defaults (`batch_size`, `max_seq_length`, `seed`)
-- [`configs/dvc_params.yaml`](../configs/dvc_params.yaml) – DVC overrides
-- [`configs/finbert.yaml`](../configs/finbert.yaml) – `model_name`
+- [`params.yaml`](../params.yaml) – DVC-tracked params (`market`, `features`, `sentiment`, …)
+- [`configs/market.yaml`](../configs/market.yaml) – tickers, dates, compression
+- [`configs/features.yaml`](../configs/features.yaml) – windows, risk-free rate
 
-Environment overrides (highest precedence):
+Environment overrides:
 
-- `PROJECT_BATCH_SIZE`
-- `PROJECT_MAX_SEQ_LENGTH`
-- `PROJECT_SEED`
-- `PROJECT_MODEL_NAME`
+| Variable | Purpose |
+|----------|---------|
+| `MARKET_SOURCE` | `sample` or `yfinance` |
+| `PROJECT_*` | FinBERT / batch overrides |
+| `HF_TOKEN` | Hugging Face Hub auth |
 
-## Reproducibility workflow
+## Workflow
 
 ```bash
-# Full pipeline
-dvc repro
-
-# After changing params.yaml
-dvc repro sentiment
-
-# Inspect parameter drift
+dvc repro                              # full pipeline
+dvc repro merge_features               # single stage
 dvc params diff
-
-# View metrics
 dvc metrics show
-cat metrics/sentiment/metrics.json
-```
-
-Commit `dvc.lock` after pipeline changes so hashes stay reproducible across machines.
-
-## Metrics (DVCLive)
-
-The sentiment stage logs:
-
-- `avg_positive_score` – mean confidence for positive labels
-- `total_rows` – number of scored articles
-
-DVCLive runs with `save_dvc_exp=False` to avoid automatic DVC experiment stashing (which can fail on Windows when log files are locked).
-
-Top-level `dvc.yaml` registers:
-
-```yaml
-metrics:
-  - metrics/sentiment/metrics.json
 ```
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`):
+- `pytest` with `MARKET_SOURCE=sample`
+- `dvc repro` Phase 1 ingest/preprocess
+- Phase 2 market + feature stages (sentiment features require Phase 1 output or empty schema)
 
-1. `pip install -e ".[dev]"`
-2. `pytest`
-3. `dvc repro ingest preprocess` (no FinBERT download)
+## Metrics
 
-Run full `dvc repro` locally before releases.
+DVCLive outputs under `metrics/` per stage (`save_dvc_exp=False`).
 
-## Artifacts and git
+## Git artifacts
 
-- `data/raw/news.csv` – small sample; tracked in git
-- `data/processed/*` – generated; listed in `.gitignore`
-- `logs/` – JSON logs per module; gitignored
+Generated and gitignored: `data/processed/market/`, `data/features/`, `data/raw/market/`.
+
+Sample market data is generated on first run under `data/external/sample_market/`.

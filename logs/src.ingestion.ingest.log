@@ -60,3 +60,15 @@
 {"time": "2026-05-23 16:21:04,618", "level": "INFO", "name": "src.ingestion.ingest", "message": "Sample news CSV written"}
 {"time": "2026-05-23 16:21:04,627", "level": "INFO", "name": "src.ingestion.ingest", "message": "Generating sample news dataset"}
 {"time": "2026-05-23 16:21:04,630", "level": "INFO", "name": "src.ingestion.ingest", "message": "Sample news CSV written"}
+{"time": "2026-05-23 16:33:25,284", "level": "INFO", "name": "src.ingestion.ingest", "message": "Generating sample news dataset"}
+{"time": "2026-05-23 16:33:25,295", "level": "INFO", "name": "src.ingestion.ingest", "message": "Sample news CSV written"}
+{"time": "2026-05-23 16:33:25,306", "level": "INFO", "name": "src.ingestion.ingest", "message": "Generating sample news dataset"}
+{"time": "2026-05-23 16:33:25,308", "level": "INFO", "name": "src.ingestion.ingest", "message": "Sample news CSV written"}
+{"time": "2026-05-23 18:23:11,899", "level": "INFO", "name": "src.ingestion.ingest", "message": "Generating sample news dataset"}
+{"time": "2026-05-23 18:23:11,923", "level": "INFO", "name": "src.ingestion.ingest", "message": "Sample news CSV written"}
+{"time": "2026-05-23 18:23:12,014", "level": "INFO", "name": "src.ingestion.ingest", "message": "Generating sample news dataset"}
+{"time": "2026-05-23 18:23:12,016", "level": "INFO", "name": "src.ingestion.ingest", "message": "Sample news CSV written"}
+{"time": "2026-05-23 18:23:55,847", "level": "INFO", "name": "src.ingestion.ingest", "message": "Generating sample news dataset"}
+{"time": "2026-05-23 18:23:55,852", "level": "INFO", "name": "src.ingestion.ingest", "message": "Sample news CSV written"}
+{"time": "2026-05-23 18:23:56,776", "level": "INFO", "name": "src.ingestion.ingest", "message": "Generating sample news dataset"}
+{"time": "2026-05-23 18:23:56,778", "level": "INFO", "name": "src.ingestion.ingest", "message": "Sample news CSV written"}

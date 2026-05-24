@@ -37,8 +37,102 @@ stages:
       - data/processed/sentiment.parquet
       - metrics/sentiment/
 
+  ingest_market_data:
+    cmd: python -m src.market.ingest
+    deps:
+      - src/market/
+      - src/utils/
+      - configs/
+    params:
+      - market.source
+      - market.tickers
+      - market.start_date
+      - market.end_date
+    outs:
+      - data/raw/market/
+
+  clean_market_data:
+    cmd: python -m src.market.clean
+    deps:
+      - data/raw/market/
+      - src/market/
+      - src/utils/
+      - configs/
+    params:
+      - market.compression
+    outs:
+      - data/processed/market/
+
+  generate_returns:
+    cmd: python -m src.features.pipeline.returns_stage
+    deps:
+      - data/processed/market/
+      - src/features/
+      - src/market/
+      - src/utils/
+      - configs/
+    params:
+      - features.volatility_window
+    outs:
+      - data/features/returns/
+
+  generate_volatility_features:
+    cmd: python -m src.features.pipeline.volatility_stage
+    deps:
+      - data/features/returns/
+      - src/features/
+      - src/utils/
+      - configs/
+    params:
+      - features.volatility_window
+      - features.sharpe_window
+      - features.risk_free_rate
+    outs:
+      - data/features/volatility/
+
+  generate_technical_features:
+    cmd: python -m src.features.pipeline.technical_stage
+    deps:
+      - data/features/returns/
+      - src/features/
+      - src/utils/
+      - configs/
+    params:
+      - features.momentum_window
+      - features.sma_windows
+      - features.correlation_window
+    outs:
+      - data/features/technical/
+
+  generate_sentiment_features:
+    cmd: python -m src.features.pipeline.sentiment_stage
+    deps:
+      - data/processed/sentiment.parquet
+      - src/features/
+      - src/utils/
+      - configs/
+      - configs/sentiment_map.yaml
+    outs:
+      - data/features/sentiment_agg/
+
+  merge_features:
+    cmd: python -m src.features.pipeline.merge_stage
+    deps:
+      - data/features/returns/
+      - data/features/volatility/
+      - data/features/technical/
+      - data/features/sentiment_agg/
+      - src/features/
+      - src/utils/
+      - configs/
+    outs:
+      - data/features/merged/
+
 metrics:
   - metrics/sentiment/metrics.json
+  - metrics/market_ingest/metrics.json
+  - metrics/market_clean/metrics.json
+  - metrics/features_merge/metrics.json
 plots:
   - metrics/sentiment/plots/metrics:
       x: step

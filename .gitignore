@@ -1,4 +1,5 @@
 .venv/
+.venv312
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -14,9 +15,15 @@ logs/
 .dvc/tmp/
 
 data/raw/news.csv
+data/raw/market/
 data/processed/
+data/features/
+data/analytics/
 models/
 reports/
+metrics/market_ingest/
+metrics/market_clean/
+metrics/features_*/
 
 # Hugging Face cache (optional local override)
 # .cache/huggingface/

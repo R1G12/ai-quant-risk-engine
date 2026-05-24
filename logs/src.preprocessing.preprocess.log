@@ -48,3 +48,9 @@
 {"time": "2026-05-23 16:20:03,381", "level": "INFO", "name": "src.preprocessing.preprocess", "message": "Preprocessing completed"}
 {"time": "2026-05-23 16:21:04,633", "level": "INFO", "name": "src.preprocessing.preprocess", "message": "Starting preprocessing"}
 {"time": "2026-05-23 16:21:04,651", "level": "INFO", "name": "src.preprocessing.preprocess", "message": "Preprocessing completed"}
+{"time": "2026-05-23 16:33:25,311", "level": "INFO", "name": "src.preprocessing.preprocess", "message": "Starting preprocessing"}
+{"time": "2026-05-23 16:33:25,327", "level": "INFO", "name": "src.preprocessing.preprocess", "message": "Preprocessing completed"}
+{"time": "2026-05-23 18:23:12,024", "level": "INFO", "name": "src.preprocessing.preprocess", "message": "Starting preprocessing"}
+{"time": "2026-05-23 18:23:12,061", "level": "INFO", "name": "src.preprocessing.preprocess", "message": "Preprocessing completed"}
+{"time": "2026-05-23 18:23:56,789", "level": "INFO", "name": "src.preprocessing.preprocess", "message": "Starting preprocessing"}
+{"time": "2026-05-23 18:23:56,801", "level": "INFO", "name": "src.preprocessing.preprocess", "message": "Preprocessing completed"}

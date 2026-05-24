@@ -32,6 +32,16 @@ Do not add pandas imports to `src/` unless explicitly migrating a notebook modul
 - Functions: `snake_case` verbs (`fetch_news`, `preprocess_news`, `run_sentiment`)
 - Canonical text column: `text` after preprocessing
 - Sentiment outputs: `sentiment_label`, `sentiment_score`
+- Market join keys: `timestamp`, `ticker` (UTC timestamps)
+- Partition columns: `year`, `month` on market data
+
+## Phase 2 rules
+
+- Use `scan_parquet` for reads, lazy pipelines for transforms
+- Feature logic in `src/features/`; DVC entrypoints in `src/features/pipeline/`
+- Market sources in `src/market/adapters/` only
+- `MARKET_SOURCE` env overrides `params.yaml` → `market.source`
+- Never commit `data/features/` or `data/processed/market/` (gitignored)
 
 ## Modularity requirements
 

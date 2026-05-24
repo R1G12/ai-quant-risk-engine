@@ -1,0 +1,10 @@
+name: portfolio
+required_columns:
+  - timestamp
+  - asset
+  - weight
+  - exposure
+  - beta
+  - var
+  - cvar
+note: Schema stub for Phase 2b portfolio optimization.
