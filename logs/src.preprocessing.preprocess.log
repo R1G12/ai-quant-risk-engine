@@ -64,3 +64,5 @@
 {"time": "2026-05-25 00:46:57,340", "level": "INFO", "name": "src.preprocessing.preprocess", "message": "Preprocessing completed"}
 {"time": "2026-05-25 01:16:56,124", "level": "INFO", "name": "src.preprocessing.preprocess", "message": "Starting preprocessing"}
 {"time": "2026-05-25 01:16:56,135", "level": "INFO", "name": "src.preprocessing.preprocess", "message": "Preprocessing completed"}
+{"time": "2026-05-25 01:25:45,333", "level": "INFO", "name": "src.preprocessing.preprocess", "message": "Starting preprocessing"}
+{"time": "2026-05-25 01:25:45,344", "level": "INFO", "name": "src.preprocessing.preprocess", "message": "Preprocessing completed"}

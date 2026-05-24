@@ -363,9 +363,9 @@ stages:
       nfiles: 2
     - path: src/risk/
       hash: md5
-      md5: c43a3cae960e2ec39785dd99e71435bc.dir
-      size: 79141
-      nfiles: 67
+      md5: 5925f92b1bfae9538892e7905a5f4837.dir
+      size: 101563
+      nfiles: 74
     - path: src/utils/
       hash: md5
       md5: ae0066feee672250759504004d3ecc56.dir
@@ -402,9 +402,9 @@ stages:
       nfiles: 3
     - path: src/risk/
       hash: md5
-      md5: 102dea64cb25bdd02a52bd1c1013e77a.dir
-      size: 72932
-      nfiles: 64
+      md5: 5925f92b1bfae9538892e7905a5f4837.dir
+      size: 101563
+      nfiles: 74
     params:
       params.yaml:
         risk.var.confidence_levels:
@@ -438,9 +438,9 @@ stages:
       nfiles: 1
     - path: src/risk/
       hash: md5
-      md5: 45d927d242f125a68072b5eedfdf09ce.dir
-      size: 74758
-      nfiles: 65
+      md5: 5925f92b1bfae9538892e7905a5f4837.dir
+      size: 101563
+      nfiles: 74
     params:
       params.yaml:
         risk.var.confidence_levels:
@@ -468,9 +468,9 @@ stages:
       nfiles: 2
     - path: src/risk/
       hash: md5
-      md5: c43a3cae960e2ec39785dd99e71435bc.dir
-      size: 79141
-      nfiles: 67
+      md5: 5925f92b1bfae9538892e7905a5f4837.dir
+      size: 101563
+      nfiles: 74
     params:
       params.yaml:
         features.correlation_window: 30
@@ -501,9 +501,9 @@ stages:
       nfiles: 3
     - path: src/risk/
       hash: md5
-      md5: 027667ad8183f0b24fc256a2098f8c75.dir
-      size: 88997
-      nfiles: 71
+      md5: 5925f92b1bfae9538892e7905a5f4837.dir
+      size: 101563
+      nfiles: 74
     params:
       params.yaml:
         risk.hmm_n_regimes: 3
@@ -535,9 +535,9 @@ stages:
       nfiles: 1
     - path: src/risk/
       hash: md5
-      md5: 10019a0fb46dce4fc5bebb95c78573bf.dir
-      size: 95690
-      nfiles: 72
+      md5: 5925f92b1bfae9538892e7905a5f4837.dir
+      size: 101563
+      nfiles: 74
     params:
       params.yaml:
         risk.optimization.long_only: true

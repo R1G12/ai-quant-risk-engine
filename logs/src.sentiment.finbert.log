@@ -45,3 +45,5 @@
 {"time": "2026-05-25 00:46:57,404", "level": "INFO", "name": "src.sentiment.finbert", "message": "Sentiment results written"}
 {"time": "2026-05-25 01:16:56,184", "level": "INFO", "name": "src.sentiment.finbert", "message": "Starting sentiment pipeline"}
 {"time": "2026-05-25 01:16:56,188", "level": "INFO", "name": "src.sentiment.finbert", "message": "Sentiment results written"}
+{"time": "2026-05-25 01:25:45,395", "level": "INFO", "name": "src.sentiment.finbert", "message": "Starting sentiment pipeline"}
+{"time": "2026-05-25 01:25:45,399", "level": "INFO", "name": "src.sentiment.finbert", "message": "Sentiment results written"}
