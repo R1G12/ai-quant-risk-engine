@@ -3,6 +3,7 @@
 ## Run individual stages
 
 ```bash
+# Activate .venv312 first (Python 3.12)
 python -m src.ingestion.ingest
 python -m src.preprocessing.preprocess
 python -m src.sentiment.finbert

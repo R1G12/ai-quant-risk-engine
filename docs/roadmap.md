@@ -33,6 +33,6 @@
 ## Stretch / backlog
 
 - Migrate Phase 1 news from CSV → `data/raw/news/*.parquet`
-- `sink_parquet(partition_by)` when Polars version supports it uniformly
+- ~~`sink_parquet(PartitionBy)`~~ — done (Polars >= 1.20, `src/utils/io.py`, `src/market/partitions.py`)
 - HF embeddings (`embedding_id` column)
 - DVC remote storage

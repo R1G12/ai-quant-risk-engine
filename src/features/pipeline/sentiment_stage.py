@@ -8,6 +8,7 @@ from src.features.sentiment_agg import aggregate_sentiment_daily, map_sentiment_
 from src.utils.config import load_app_config
 from src.utils.logger import get_logger
 from src.utils.metrics import log_stage_metrics
+from src.utils.io import sink_lazy_parquet
 from src.utils.paths import (
     FEATURES_SENTIMENT_AGG_DIR,
     METRICS_DIR,
@@ -43,7 +44,7 @@ def run() -> None:
         .pipe(aggregate_sentiment_daily)
     )
     out = FEATURES_SENTIMENT_AGG_DIR / "sentiment_agg.parquet"
-    lf.collect().write_parquet(out, compression=app.market.compression)
+    sink_lazy_parquet(lf, out, compression=app.market.compression)
     LOGGER.info("Sentiment features written", extra={"path": str(out)})
     log_stage_metrics(METRICS_DIR / "features_sentiment", {}, lazy_frame=lf)
 

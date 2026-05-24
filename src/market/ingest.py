@@ -11,6 +11,7 @@ from src.market.adapters.yfinance import load_yfinance_market
 from src.utils.config import load_app_config
 from src.utils.logger import get_logger
 from src.utils.metrics import log_stage_metrics
+from src.utils.io import sink_lazy_parquet
 from src.utils.paths import METRICS_DIR, RAW_MARKET_DIR, ensure_dir
 
 LOGGER = get_logger(__name__)
@@ -32,7 +33,7 @@ def ingest_market_data(output_dir: Path | None = None) -> Path:
         lf = load_sample_market(cfg)
 
     raw_path = out / "market_raw.parquet"
-    lf.collect().write_parquet(raw_path, compression=cfg.compression)
+    sink_lazy_parquet(lf, raw_path, compression=cfg.compression)
     LOGGER.info("Raw market data written", extra={"path": str(raw_path)})
 
     metrics_dir = METRICS_DIR / "market_ingest"

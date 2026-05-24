@@ -72,3 +72,7 @@
 {"time": "2026-05-23 18:23:55,852", "level": "INFO", "name": "src.ingestion.ingest", "message": "Sample news CSV written"}
 {"time": "2026-05-23 18:23:56,776", "level": "INFO", "name": "src.ingestion.ingest", "message": "Generating sample news dataset"}
 {"time": "2026-05-23 18:23:56,778", "level": "INFO", "name": "src.ingestion.ingest", "message": "Sample news CSV written"}
+{"time": "2026-05-24 23:58:15,632", "level": "INFO", "name": "src.ingestion.ingest", "message": "Generating sample news dataset"}
+{"time": "2026-05-24 23:58:15,654", "level": "INFO", "name": "src.ingestion.ingest", "message": "Sample news CSV written"}
+{"time": "2026-05-24 23:58:16,463", "level": "INFO", "name": "src.ingestion.ingest", "message": "Generating sample news dataset"}
+{"time": "2026-05-24 23:58:16,464", "level": "INFO", "name": "src.ingestion.ingest", "message": "Sample news CSV written"}

@@ -62,3 +62,24 @@ DVCLive outputs under `metrics/` per stage (`save_dvc_exp=False`).
 Generated and gitignored: `data/processed/market/`, `data/features/`, `data/raw/market/`.
 
 Sample market data is generated on first run under `data/external/sample_market/`.
+
+## Python version
+
+Use **Python 3.12** locally (`.venv312`) and in CI. `dvc.yaml` stages call `python -m ...`; that must resolve to 3.12 after activating the venv.
+
+## DVC remote (optional)
+
+`dvc push` uploads tracked outputs from `.dvc/cache` to a **remote**. It is **not required** for local development.
+
+**No DVC cloud account exists** — configure any storage backend:
+
+| Type | Example command |
+|------|-----------------|
+| Local folder | `dvc remote add -d localstore D:\dvc-storage\ai-quant-risk-engine` |
+| Amazon S3 | `dvc remote add -d s3remote s3://bucket/path` |
+| Google GCS | `dvc remote add -d gcs gs://bucket/path` |
+| SSH server | `dvc remote add -d sshremote ssh://user@host/path` |
+
+Then: `dvc push` / `dvc pull`.
+
+For a class project on one machine, a **local folder remote** is enough to practice the same workflow teams use with S3, without paying for cloud storage.

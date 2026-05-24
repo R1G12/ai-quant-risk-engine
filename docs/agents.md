@@ -11,7 +11,7 @@ Instructions for AI coding agents working on this repository.
 
 ## Coding standards
 
-- **Python 3.11+** with type hints on public functions
+- **Python 3.12.x only** (`.venv312`; `requires-python >=3.12,<3.13`) with type hints on public functions
 - **Docstrings** on modules and public APIs
 - **`pathlib.Path`** for all file paths (see `src.utils.paths`)
 - **Structured logging** via `src.utils.logger.get_logger`
@@ -60,7 +60,8 @@ Do not add pandas imports to `src/` unless explicitly migrating a notebook modul
 
 - Run `dvc repro` after changing pipeline code or params
 - Commit `dvc.lock` when outputs change
-- Do not commit `.venv`, `logs/`, or `data/processed/`
+- Do not commit `.venv`, `.venv312`, `logs/`, or `data/processed/`
+- Activate `.venv312` before `dvc repro` / `pytest` so `python` on PATH is 3.12
 - Use `.env` for secrets (never commit); `.env.example` for templates
 
 ## Preferred libraries

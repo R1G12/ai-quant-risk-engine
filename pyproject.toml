@@ -7,10 +7,10 @@ name = "ai-quant-risk-engine"
 version = "0.2.0"
 description = "Financial sentiment and risk modeling platform for hedge-fund analytics"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12,<3.13"
 dependencies = [
-    "polars>=0.20.0",
-    "pyarrow>=14.0.0",
+    "polars>=1.20.0",
+    "pyarrow>=15.0.0",
     "numpy>=1.24.0",
     "transformers>=4.45.0",
     "torch>=2.0.0",
