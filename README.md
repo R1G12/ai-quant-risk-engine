@@ -4,39 +4,34 @@ Institutional-style **financial sentiment + risk modeling** platform for a hedge
 
 - **Phase 1:** FinBERT sentiment pipeline (news → preprocess → sentiment)
 - **Phase 2:** Market data lake + lazy Polars feature engineering → `risk_dataset.parquet`
-- **Phase 2b (planned):** risk modeling, portfolio optimization, evaluation
+- **Phase 3:** Quantitative risk engine — VaR/CVaR, vol, correlations, Markowitz optimization, efficient frontier
 
-## Pipeline map: 7 conceptual steps vs 10 DVC stages
-
-Your target end-to-end story has **7 conceptual steps**. The repo implements **10 DVC stages** today (Phases 1–2). Steps 5–7 are planned in `src/risk`, `src/portfolio`, and notebooks.
+## Pipeline map: 7 conceptual steps vs 17 DVC stages
 
 ```mermaid
 flowchart LR
-  subgraph done [Implemented_DVC]
+  subgraph done [Implemented]
     S1[1_download_data]
     S2[2_preprocess]
-    S3[3_sentiment_analysis]
-    S4[4_feature_engineering]
-  end
-  subgraph planned [Phase2b_planned]
+    S3[3_sentiment]
+    S4[4_features]
     S5[5_risk_modeling]
-    S6[6_portfolio_optimization]
+    S6[6_portfolio_opt]
+  end
+  subgraph planned [Future]
     S7[7_evaluation]
   end
   S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7
 ```
 
-| Conceptual step | Status | DVC stage(s) | Module |
-|-----------------|--------|--------------|--------|
-| 1. Download data | Done | `ingest`, `ingest_market_data` | News sample + market (`sample` / `yfinance`) |
-| 2. Preprocess | Done | `preprocess`, `clean_market_data` | News text + partitioned OHLCV lake |
-| 3. Sentiment analysis | Done | `sentiment` | FinBERT on news |
-| 4. Feature engineering | Done | `generate_returns`, `generate_volatility_features`, `generate_technical_features`, `generate_sentiment_features`, `merge_features` | Quant + sentiment features → `risk_dataset.parquet` |
-| 5. Risk modeling | Planned | — | `src/risk/` (notebook prototype exists) |
-| 6. Portfolio optimization | Planned | — | `src/portfolio/` (notebook prototype exists) |
-| 7. Evaluation | Planned | partial metrics | DVCLive + notebooks |
+| Conceptual step | Status | DVC stage(s) |
+|-----------------|--------|--------------|
+| 1–4 | Done | Phase 1 + Phase 2 (10 stages) |
+| 5. Risk modeling | Done | `generate_volatility_metrics`, `generate_var_metrics`, `generate_cvar_metrics`, `generate_correlations` |
+| 6. Portfolio optimization | Done | `generate_portfolio_metrics`, `optimize_portfolios`, `generate_efficient_frontier` |
+| 7. Evaluation | Partial | DVCLive metrics + `data/analytics/risk/` |
 
-### DVC stage flow (what `dvc repro` runs)
+### DVC stage flow
 
 ```mermaid
 flowchart TB
@@ -49,6 +44,13 @@ flowchart TB
   gen_vol --> merge[merge_features]
   gen_tech --> merge
   gen_sent --> merge
+  merge --> risk_vol[generate_volatility_metrics]
+  risk_vol --> risk_var[generate_var_metrics]
+  risk_var --> risk_cvar[generate_cvar_metrics]
+  merge --> risk_corr[generate_correlations]
+  risk_corr --> risk_port[generate_portfolio_metrics]
+  risk_port --> risk_opt[optimize_portfolios]
+  risk_opt --> risk_front[generate_efficient_frontier]
 ```
 
 ## Features
@@ -63,6 +65,14 @@ flowchart TB
 - Lazy writes via `sink_parquet` (Polars >= 1.20, `PartitionBy`)
 - Merged output: `data/features/merged/risk_dataset.parquet`
 
+### Phase 3
+- Volatility: rolling, EWMA, regime flags, GARCH
+- VaR / CVaR: historical, parametric, Monte Carlo
+- Correlation/covariance with Ledoit-Wolf shrinkage
+- HMM regimes, portfolio analytics
+- Markowitz min-var / max-Sharpe + efficient frontier
+- Plotly dashboard: `data/analytics/risk/`
+
 ## Project structure
 
 ```
@@ -72,6 +82,7 @@ ai-quant-risk-engine/
 │   ├── raw/market/
 │   ├── processed/market/
 │   ├── features/
+│   ├── risk/
 │   └── external/
 ├── docs/
 ├── src/
@@ -92,7 +103,7 @@ ai-quant-risk-engine/
 cd ai-quant-risk-engine
 py -3.12 -m venv .venv312
 .venv312\Scripts\activate
-pip install -e ".[dev,market]"
+pip install -e ".[dev,market,risk]"
 copy .env.example .env
 ```
 
@@ -135,6 +146,15 @@ dvc repro ingest_market_data clean_market_data generate_returns
 dvc repro generate_volatility_features generate_technical_features generate_sentiment_features merge_features
 ```
 
+Phase 3 risk engine (after `merge_features`):
+
+```powershell
+.venv312\Scripts\activate
+$env:MARKET_SOURCE = "sample"
+dvc repro generate_volatility_metrics generate_var_metrics generate_cvar_metrics
+dvc repro generate_correlations generate_portfolio_metrics optimize_portfolios generate_efficient_frontier
+```
+
 ## DVC remote storage (optional)
 
 **You do not need `dvc push` for local work.** `dvc repro` already stores artifacts in `.dvc/cache` on your machine.
@@ -147,13 +167,18 @@ dvc repro generate_volatility_features generate_technical_features generate_sent
 
 There is **no DVC account** to create. DVC is open-source; remotes are just storage locations.
 
-### Local remote (recommended for practice)
+### Local remote (configured)
+
+Artifacts are pushed to a folder **outside the repo** (simulates cloud storage):
+
+`D:\Romain\Projects\Finance\02_Risk Analysis\DVC_test_quant`
+
+Configured in [`.dvc/config`](.dvc/config) as remote `localstore` (default). After `dvc repro`:
 
 ```powershell
-# Example: dedicated folder outside the repo
-mkdir D:\dvc-storage\ai-quant-risk-engine
-dvc remote add -d localstore D:\dvc-storage\ai-quant-risk-engine
-dvc push
+.venv312\Scripts\activate
+dvc push    # upload cache → DVC_test_quant
+dvc pull    # restore on another machine / fresh clone
 ```
 
 ### Cloud remote (later)
@@ -181,6 +206,10 @@ pytest
 - [MLOps](docs/mlops.md)
 - [Agents guide](docs/agents.md)
 - [Roadmap](docs/roadmap.md)
+- [Risk models](docs/risk_models.md)
+- [Portfolio theory](docs/portfolio_theory.md)
+- [Quantitative methods](docs/quantitative_methods.md)
+- [Optimization pipeline](docs/optimization_pipeline.md)
 
 ## Roadmap
 

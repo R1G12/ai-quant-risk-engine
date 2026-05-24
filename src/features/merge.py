@@ -9,27 +9,52 @@ import polars as pl
 
 from src.utils.paths import RISK_DATASET_METADATA_PATH
 
+JOIN_KEYS = ("timestamp", "ticker")
+
+# Columns owned by the returns branch (market OHLCV + return features).
+_BASE_COLUMNS = frozenset(
+    {
+        *JOIN_KEYS,
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "source",
+        "year",
+        "month",
+        "ingested_at",
+        "returns",
+        "log_returns",
+    }
+)
+
+
+def _engineered_columns(lf: pl.LazyFrame) -> list[str]:
+    """Feature-only columns from a branch parquet (excludes OHLCV and return duplicates)."""
+    names = lf.collect_schema().names()
+    return [c for c in names if c not in _BASE_COLUMNS]
+
 
 def merge_feature_frames(
     returns_lf: pl.LazyFrame,
     volatility_lf: pl.LazyFrame,
     technical_lf: pl.LazyFrame,
-    sentiment_lf: pl.LazyFrame,
+    sentiment_lf: pl.LazyFrame | None = None,
 ) -> pl.LazyFrame:
-    """Left-join feature sets on timestamp and ticker."""
-    vol_cols = ["timestamp", "ticker", "volatility", "annualized_volatility", "rolling_sharpe"]
-    tech_cols = ["timestamp", "ticker", "sma_10", "sma_20", "momentum", "drawdown", "volume_zscore"]
-    sent_cols = ["timestamp", "ticker", "confidence", "bullish_ratio", "article_count"]
+    """Left-join feature sets on timestamp and ticker.
 
-    vol = volatility_lf.select([c for c in vol_cols if c in volatility_lf.collect_schema().names()])
-    tech = technical_lf.select([c for c in tech_cols if c in technical_lf.collect_schema().names()])
-    sent = sentiment_lf.select([c for c in sent_cols if c in sentiment_lf.collect_schema().names()])
+    Each branch contributes only its engineered columns (not duplicate OHLCV).
+    """
+    merged = returns_lf
+    for branch in (volatility_lf, technical_lf):
+        cols = list(JOIN_KEYS) + _engineered_columns(branch)
+        merged = merged.join(branch.select(cols), on=list(JOIN_KEYS), how="left")
 
-    merged = (
-        returns_lf.join(vol, on=["timestamp", "ticker"], how="left")
-        .join(tech, on=["timestamp", "ticker"], how="left")
-        .join(sent, on=["timestamp", "ticker"], how="left")
-    )
+    if sentiment_lf is not None and len(sentiment_lf.collect_schema().names()) > 0:
+        cols = list(JOIN_KEYS) + _engineered_columns(sentiment_lf)
+        merged = merged.join(sentiment_lf.select(cols), on=list(JOIN_KEYS), how="left")
+
     return merged
 
 

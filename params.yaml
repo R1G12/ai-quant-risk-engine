@@ -29,3 +29,25 @@ features:
     - 20
   correlation_window: 30
   annualization_factor: 252
+risk:
+  hmm_n_regimes: 3
+  hmm_n_iter: 200
+  volatility:
+    ewma_span: 21
+    rolling_vol_window: 21
+    long_vol_window: 63
+  var:
+    confidence_levels:
+      - 0.95
+      - 0.99
+    n_simulations: 10000
+    seed: 42
+  portfolio:
+    benchmark_ticker: AAPL
+    weight_mode: equal
+    rolling_metrics_window: 63
+  optimization:
+    long_only: true
+    max_weight: 0.4
+    frontier_points: 25
+    shrinkage: ledoit_wolf

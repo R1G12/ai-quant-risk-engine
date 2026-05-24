@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import polars as pl
 
+from src.analytics.feature_overview import write_risk_dataset_overview
 from src.features.merge import merge_feature_frames, write_metadata
 from src.utils.config import load_app_config
 from src.utils.logger import get_logger
 from src.utils.metrics import log_stage_metrics
 from src.utils.io import sink_lazy_parquet
 from src.utils.paths import (
+    ANALYTICS_DIR,
     FEATURES_MERGED_DIR,
     FEATURES_RETURNS_DIR,
     FEATURES_SENTIMENT_AGG_DIR,
@@ -20,6 +22,7 @@ from src.utils.paths import (
     RISK_DATASET_PATH,
     ensure_dir,
 )
+from src.validation.schema import validate_schema_file
 
 LOGGER = get_logger(__name__)
 
@@ -32,13 +35,21 @@ def run() -> None:
     vol_lf = pl.scan_parquet(FEATURES_VOLATILITY_DIR / "volatility.parquet")
     tech_lf = pl.scan_parquet(FEATURES_TECHNICAL_DIR / "technical.parquet")
     sent_path = FEATURES_SENTIMENT_AGG_DIR / "sentiment_agg.parquet"
-    sent_lf = pl.scan_parquet(sent_path) if sent_path.is_file() else pl.LazyFrame()
+    sent_lf = pl.scan_parquet(sent_path) if sent_path.is_file() else None
 
     merged = merge_feature_frames(returns_lf, vol_lf, tech_lf, sent_lf)
     sink_lazy_parquet(merged, RISK_DATASET_PATH, compression=app.market.compression)
 
+    sample = merged.head(100).collect()
+    validate_schema_file(sample, "risk_dataset")
+
     cols = merged.collect_schema().names()
     write_metadata(RISK_DATASET_METADATA_PATH, list(cols))
+    ensure_dir(ANALYTICS_DIR)
+    write_risk_dataset_overview(
+        RISK_DATASET_PATH,
+        ANALYTICS_DIR / "risk_dataset_overview.html",
+    )
     LOGGER.info("Risk dataset written", extra={"path": str(RISK_DATASET_PATH)})
     log_stage_metrics(METRICS_DIR / "features_merge", {"feature_columns": len(cols)}, lazy_frame=merged)
 

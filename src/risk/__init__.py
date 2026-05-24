@@ -1,1 +1,1 @@
-"""Risk modeling (VaR, regime detection) – Phase 2."""
+"""Quantitative risk modeling engine (Phase 3)."""

@@ -75,7 +75,7 @@ Use **Python 3.12** locally (`.venv312`) and in CI. `dvc.yaml` stages call `pyth
 
 | Type | Example command |
 |------|-----------------|
-| Local folder | `dvc remote add -d localstore D:\dvc-storage\ai-quant-risk-engine` |
+| Local folder | `localstore` → `D:\Romain\Projects\Finance\02_Risk Analysis\DVC_test_quant` (see `.dvc/config`) |
 | Amazon S3 | `dvc remote add -d s3remote s3://bucket/path` |
 | Google GCS | `dvc remote add -d gcs gs://bucket/path` |
 | SSH server | `dvc remote add -d sshremote ssh://user@host/path` |

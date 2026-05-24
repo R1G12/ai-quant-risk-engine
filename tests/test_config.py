@@ -14,3 +14,5 @@ def test_load_app_config_market_sample() -> None:
     assert app.market.source in {"sample", "yfinance"}
     assert len(app.market.tickers) >= 2
     assert app.features.volatility_window == 21
+    assert app.risk.volatility.ewma_span == 21
+    assert 0.95 in app.risk.var.confidence_levels

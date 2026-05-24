@@ -32,6 +32,7 @@ def test_merge_feature_frames_join_keys() -> None:
             "volatility": [None, 0.01, 0.02],
             "annualized_volatility": [None, 0.15, 0.30],
             "rolling_sharpe": [None, 1.0, 1.1],
+            "volume_zscore": [None, 0.5, -0.2],
         }
     ).lazy()
     tech = pl.DataFrame(
@@ -40,6 +41,8 @@ def test_merge_feature_frames_join_keys() -> None:
             "ticker": ["AAPL"] * 3,
             "sma_10": [100.0, 100.5, 101.0],
             "momentum": [0.0, 0.01, 0.02],
+            "drawdown": [0.0, -0.01, -0.02],
+            "rolling_corr_AAPL": [None, 0.9, 0.85],
         }
     ).lazy()
     sent = pl.DataFrame(
@@ -55,4 +58,6 @@ def test_merge_feature_frames_join_keys() -> None:
     merged = merge_feature_frames(returns, vol, tech, sent).collect()
     assert merged.height == 3
     assert "volatility" in merged.columns
+    assert "volume_zscore" in merged.columns
+    assert "rolling_corr_AAPL" in merged.columns
     assert "bullish_ratio" in merged.columns

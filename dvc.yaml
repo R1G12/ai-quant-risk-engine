@@ -128,6 +128,102 @@ stages:
     outs:
       - data/features/merged/
 
+  generate_volatility_metrics:
+    cmd: python -m src.risk.pipeline.volatility_stage
+    deps:
+      - data/features/merged/
+      - src/risk/
+      - src/utils/
+      - configs/
+      - configs/risk/
+    params:
+      - risk.volatility.ewma_span
+      - risk.volatility.rolling_vol_window
+      - risk.volatility.long_vol_window
+    outs:
+      - data/risk/volatility/
+
+  generate_var_metrics:
+    cmd: python -m src.risk.pipeline.var_stage
+    deps:
+      - data/features/merged/
+      - data/risk/volatility/
+      - src/risk/
+      - configs/risk/
+    params:
+      - risk.var.confidence_levels
+      - risk.var.n_simulations
+      - risk.var.seed
+    outs:
+      - data/risk/var/
+
+  generate_cvar_metrics:
+    cmd: python -m src.risk.pipeline.cvar_stage
+    deps:
+      - data/features/merged/
+      - data/risk/var/
+      - src/risk/
+      - configs/risk/
+    params:
+      - risk.var.confidence_levels
+      - risk.var.seed
+    outs:
+      - data/risk/cvar/
+
+  generate_correlations:
+    cmd: python -m src.risk.pipeline.correlations_stage
+    deps:
+      - data/features/merged/
+      - src/risk/
+      - configs/risk/
+    params:
+      - risk.optimization.shrinkage
+      - features.correlation_window
+    outs:
+      - data/risk/correlations/
+
+  generate_portfolio_metrics:
+    cmd: python -m src.risk.pipeline.portfolio_stage
+    deps:
+      - data/features/merged/
+      - data/risk/volatility/
+      - src/risk/
+      - configs/risk/
+    params:
+      - risk.portfolio.benchmark_ticker
+      - risk.portfolio.rolling_metrics_window
+      - risk.hmm_n_regimes
+    outs:
+      - data/risk/portfolio/
+
+  optimize_portfolios:
+    cmd: python -m src.risk.pipeline.optimization_stage
+    deps:
+      - data/features/merged/
+      - data/risk/correlations/
+      - src/risk/
+      - configs/risk/
+    params:
+      - risk.optimization.long_only
+      - risk.optimization.max_weight
+      - risk.optimization.shrinkage
+    outs:
+      - data/risk/optimization/
+
+  generate_efficient_frontier:
+    cmd: python -m src.risk.pipeline.frontier_stage
+    deps:
+      - data/risk/optimization/
+      - data/features/merged/
+      - src/risk/
+      - src/analytics/
+      - configs/risk/
+    params:
+      - risk.optimization.frontier_points
+    outs:
+      - data/risk/frontier/
+      - data/analytics/risk/
+
 metrics:
   - metrics/sentiment/metrics.json
   - metrics/market_ingest/metrics.json

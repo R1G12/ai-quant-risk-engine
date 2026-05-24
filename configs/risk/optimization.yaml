@@ -1,0 +1,7 @@
+long_only: true
+max_weight: 0.4
+leverage_cap: 1.0
+shrinkage: ledoit_wolf
+frontier_points: 25
+min_weight: 0.0
+use_sentiment_adjustment: true

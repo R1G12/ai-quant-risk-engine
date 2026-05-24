@@ -18,12 +18,15 @@ data/raw/news.csv
 data/raw/market/
 data/processed/
 data/features/
+data/risk/
 data/analytics/
+data/raw/portfolio/
 models/
 reports/
 metrics/market_ingest/
 metrics/market_clean/
 metrics/features_*/
+metrics/risk_*/
 
 # Hugging Face cache (optional local override)
 # .cache/huggingface/

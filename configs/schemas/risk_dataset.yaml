@@ -1,0 +1,28 @@
+name: risk_dataset
+required_columns:
+  - timestamp
+  - ticker
+  - returns
+  - log_returns
+  - volatility
+  - annualized_volatility
+  - rolling_sharpe
+  - momentum
+  - drawdown
+optional_columns:
+  - volume_zscore
+  - sma_10
+  - sma_20
+  - rolling_corr_AAPL
+  - confidence
+  - bullish_ratio
+  - article_count
+  - open
+  - high
+  - low
+  - close
+  - volume
+  - source
+  - year
+  - month
+  - ingested_at

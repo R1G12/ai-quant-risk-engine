@@ -27,6 +27,7 @@ flowchart TB
     sentFeat --> merge
   end
   merge --> riskOut[risk_dataset]
+  riskOut --> riskP3[Phase3_risk_engine]
 ```
 
 ## Modules
@@ -40,8 +41,8 @@ flowchart TB
 | `src.features` | Returns, volatility, technical, sentiment agg, merge |
 | `src.schemas` | Column contracts |
 | `src.validation` | Schema checks |
-| `src.risk` | Phase 2b – VaR, GARCH, regimes |
-| `src.portfolio` | Phase 2b – optimization |
+| `src.risk` | Phase 3 – VaR, vol, regimes, optimization |
+| `src.portfolio` | Re-exports `src.risk.portfolio` (deprecated path) |
 
 ## Data schemas (summary)
 
@@ -72,5 +73,5 @@ Full definitions: [`configs/schemas/`](../configs/schemas/) and [data_architectu
 |-------|--------|
 | 1 | News sentiment |
 | 2 | Market lake + feature store + `risk_dataset` |
-| 2b | Risk models + portfolio |
-| 3 | Private-markets Monte Carlo research |
+| 3 | Risk models + portfolio optimization |
+| 4 | Private-markets Monte Carlo research |

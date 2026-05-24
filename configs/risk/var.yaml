@@ -1,0 +1,10 @@
+confidence_levels:
+  - 0.95
+  - 0.99
+n_simulations: 10000
+seed: 42
+save_simulations: false
+methods:
+  historical: true
+  parametric: true
+  monte_carlo: true

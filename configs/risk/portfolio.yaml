@@ -1,0 +1,5 @@
+holdings_path: data/raw/portfolio/holdings.parquet
+weight_mode: equal
+benchmark_ticker: AAPL
+rolling_metrics_window: 63
+sentiment_return_scale: 0.1

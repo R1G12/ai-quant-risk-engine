@@ -1,0 +1,4 @@
+[core]
+    remote = localstore
+['remote "localstore"']
+    url = D:\Romain\Projects\Finance\02_Risk Analysis\DVC_test_quant
