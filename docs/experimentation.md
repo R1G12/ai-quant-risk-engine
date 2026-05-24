@@ -69,6 +69,24 @@ print(df.select("text", "sentiment_label", "sentiment_score"))
 
 Use `notebooks/` for ad-hoc charts and Phase 2 prototypes. Promote stable logic into `src/` and add DVC stages when outputs must be reproducible.
 
+## Phase 4 research experiments
+
+Baseline reproducible run:
+
+```bash
+dvc repro generate_simulations run_backtests generate_research_reports
+```
+
+Parameter sweeps (requires prior `dvc repro` through Phase 3):
+
+```bash
+dvc exp run generate_simulations -S research.simulation.n_paths=2000 -S research.simulation.seed=7
+dvc exp show
+dvc repro compare_experiments
+```
+
+See also [`experiment_tracking.md`](experiment_tracking.md) and [`research_framework.md`](research_framework.md).
+
 ## Troubleshooting
 
 | Issue | Mitigation |

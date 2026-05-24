@@ -8,12 +8,15 @@ import polars as pl
 
 
 def sink_lazy_parquet(
-    lf: pl.LazyFrame,
+    lf: pl.LazyFrame | pl.DataFrame,
     path: Path | str,
     *,
     compression: str = "zstd",
 ) -> None:
-    """Stream a LazyFrame to a single parquet file without an intermediate collect."""
+    """Stream a LazyFrame (or eager DataFrame) to parquet."""
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
+    if isinstance(lf, pl.DataFrame):
+        lf.write_parquet(out, compression=compression)
+        return
     lf.sink_parquet(str(out), compression=compression, mkdir=True)

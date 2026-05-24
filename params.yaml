@@ -9,13 +9,13 @@ sentiment:
 market:
   source: sample
   tickers:
-    - AAPL
-    - MSFT
-    - XOM
-    - GS
-    - JPM
-  start_date: "2024-01-01"
-  end_date: "2024-03-31"
+  - AAPL
+  - MSFT
+  - XOM
+  - GS
+  - JPM
+  start_date: '2024-01-01'
+  end_date: '2024-03-31'
   partition_freq: month
   compression: zstd
   default_sentiment_ticker: MARKET
@@ -25,8 +25,8 @@ features:
   risk_free_rate: 0.05
   momentum_window: 12
   sma_windows:
-    - 10
-    - 20
+  - 10
+  - 20
   correlation_window: 30
   annualization_factor: 252
 risk:
@@ -38,8 +38,8 @@ risk:
     long_vol_window: 63
   var:
     confidence_levels:
-      - 0.95
-      - 0.99
+    - 0.95
+    - 0.99
     n_simulations: 10000
     seed: 42
   portfolio:
@@ -51,3 +51,20 @@ risk:
     max_weight: 0.4
     frontier_points: 25
     shrinkage: ledoit_wolf
+research:
+  meta:
+    experiment_id: baseline
+    enable_dvc_experiments: true
+  simulation:
+    n_paths: 2000
+    horizon_days: 63
+    seed: 42
+    simulation_types:
+    - gbm
+    - multivariate
+    - regime_gbm
+  backtest:
+    tc_bps: 10.0
+    slippage_bps: 5.0
+    weight_source: max_sharpe
+  scenarios: {}

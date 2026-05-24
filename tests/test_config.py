@@ -16,3 +16,4 @@ def test_load_app_config_market_sample() -> None:
     assert app.features.volatility_window == 21
     assert app.risk.volatility.ewma_span == 21
     assert 0.95 in app.risk.var.confidence_levels
+    assert app.research.simulation.seed == 42

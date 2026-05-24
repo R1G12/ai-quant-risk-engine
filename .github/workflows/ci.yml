@@ -22,7 +22,7 @@ jobs:
           cache: pip
 
       - name: Install package
-        run: pip install -e ".[dev,risk]"
+        run: pip install -e ".[dev,risk,research]"
 
       - name: Run pytest
         run: pytest -q
@@ -37,3 +37,8 @@ jobs:
           dvc repro generate_sentiment_features merge_features --force
           dvc repro generate_volatility_metrics generate_var_metrics generate_cvar_metrics
           dvc repro generate_correlations generate_portfolio_metrics --force
+          dvc repro generate_efficient_frontier
+          dvc repro generate_simulations run_backtests run_stress_tests run_scenario_analysis
+          dvc repro evaluate_performance compare_experiments generate_research_reports
+      - name: Verify research dashboard exists
+        run: test -f data/analytics/dashboard/index.html

@@ -122,6 +122,58 @@ class RiskConfig:
 
 
 @dataclass
+class SimulationConfig:
+    """Phase 4 Monte Carlo simulation parameters."""
+
+    n_paths: int = 5000
+    horizon_days: int = 63
+    seed: int = 42
+    dt: float = 1.0 / 252.0
+    save_paths: bool = False
+    plot_n_paths: int = 50
+    simulation_types: list[str] = field(default_factory=lambda: ["gbm", "multivariate", "regime_gbm"])
+
+
+@dataclass
+class BacktestConfig:
+    """Phase 4 backtesting parameters."""
+
+    rebalance_freq: str = "monthly"
+    tc_bps: float = 10.0
+    slippage_bps: float = 5.0
+    walk_forward_train_days: int = 42
+    walk_forward_test_days: int = 21
+    weight_source: str = "max_sharpe"
+    benchmark_ticker: str = "AAPL"
+
+
+@dataclass
+class ScenarioConfig:
+    """Phase 4 stress/scenario shock definitions."""
+
+    scenarios: dict[str, dict[str, float]]
+    sentiment_return_scale: float = 0.15
+
+
+@dataclass
+class ResearchMetaConfig:
+    """Phase 4 experiment metadata."""
+
+    experiment_id: str = "baseline"
+    enable_dvc_experiments: bool = True
+
+
+@dataclass
+class ResearchConfig:
+    """Aggregated Phase 4 research configuration."""
+
+    simulation: SimulationConfig
+    backtest: BacktestConfig
+    scenarios: ScenarioConfig
+    meta: ResearchMetaConfig
+
+
+@dataclass
 class AppConfig:
     """Full application configuration."""
 
@@ -130,6 +182,7 @@ class AppConfig:
     features: FeatureConfig
     sentiment_map: dict[str, Any]
     risk: RiskConfig
+    research: ResearchConfig
 
 
 def load_config() -> Config:
@@ -162,6 +215,17 @@ def load_app_config() -> AppConfig:
     market_params = params.get("market", {})
     feature_params = params.get("features", {})
     risk_params = params.get("risk", {})
+    research_params = params.get("research", {})
+
+    sim_cfg = _load_yaml(CONFIGS_DIR / "simulation" / "monte_carlo.yaml")
+    bt_cfg = _load_yaml(CONFIGS_DIR / "backtesting" / "engine.yaml")
+    scen_cfg = _load_yaml(CONFIGS_DIR / "scenarios" / "stress.yaml")
+    res_cfg = _load_yaml(CONFIGS_DIR / "research.yaml")
+
+    merged_sim = _merge_dicts(sim_cfg, research_params.get("simulation", {}))
+    merged_bt = _merge_dicts(bt_cfg, research_params.get("backtest", {}))
+    merged_scen = _merge_dicts(scen_cfg, research_params.get("scenarios", {}))
+    merged_res = _merge_dicts(res_cfg, research_params.get("meta", {}))
 
     merged_finbert: dict[str, Any] = {**base_cfg, **dvc_cfg, **finbert_cfg}
     merged_market: dict[str, Any] = {**market_cfg, **market_params}
@@ -247,10 +311,40 @@ def load_app_config() -> AppConfig:
         hmm_n_iter=int(risk_params.get("hmm_n_iter", 200)),
     )
 
+    research = ResearchConfig(
+        simulation=SimulationConfig(
+            n_paths=int(merged_sim.get("n_paths", 5000)),
+            horizon_days=int(merged_sim.get("horizon_days", 63)),
+            seed=int(merged_sim.get("seed", 42)),
+            dt=float(merged_sim.get("dt", 1.0 / 252.0)),
+            save_paths=bool(merged_sim.get("save_paths", False)),
+            plot_n_paths=int(merged_sim.get("plot_n_paths", 50)),
+            simulation_types=list(merged_sim.get("simulation_types", ["gbm", "multivariate", "regime_gbm"])),
+        ),
+        backtest=BacktestConfig(
+            rebalance_freq=str(merged_bt.get("rebalance_freq", "monthly")),
+            tc_bps=float(merged_bt.get("tc_bps", 10.0)),
+            slippage_bps=float(merged_bt.get("slippage_bps", 5.0)),
+            walk_forward_train_days=int(merged_bt.get("walk_forward_train_days", 42)),
+            walk_forward_test_days=int(merged_bt.get("walk_forward_test_days", 21)),
+            weight_source=str(merged_bt.get("weight_source", "max_sharpe")),
+            benchmark_ticker=str(merged_bt.get("benchmark_ticker", "AAPL")),
+        ),
+        scenarios=ScenarioConfig(
+            scenarios=dict(merged_scen.get("scenarios", {})) or {},
+            sentiment_return_scale=float(merged_scen.get("sentiment_return_scale", 0.15)),
+        ),
+        meta=ResearchMetaConfig(
+            experiment_id=str(merged_res.get("experiment_id", "baseline")),
+            enable_dvc_experiments=bool(merged_res.get("enable_dvc_experiments", True)),
+        ),
+    )
+
     return AppConfig(
         finbert=finbert,
         market=market,
         features=features,
         sentiment_map=sentiment_map,
         risk=risk,
+        research=research,
     )

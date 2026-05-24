@@ -5,8 +5,9 @@ Institutional-style **financial sentiment + risk modeling** platform for a hedge
 - **Phase 1:** FinBERT sentiment pipeline (news → preprocess → sentiment)
 - **Phase 2:** Market data lake + lazy Polars feature engineering → `risk_dataset.parquet`
 - **Phase 3:** Quantitative risk engine — VaR/CVaR, vol, correlations, Markowitz optimization, efficient frontier
+- **Phase 4:** Research engine — Monte Carlo paths, stress/scenarios, backtesting, experiment tracking
 
-## Pipeline map: 7 conceptual steps vs 17 DVC stages
+## Pipeline map: 7 conceptual steps vs 24 DVC stages
 
 ```mermaid
 flowchart LR
@@ -18,8 +19,8 @@ flowchart LR
     S5[5_risk_modeling]
     S6[6_portfolio_opt]
   end
-  subgraph planned [Future]
-    S7[7_evaluation]
+  subgraph done2 [Phase4]
+    S7[7_research_eval]
   end
   S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7
 ```
@@ -29,7 +30,7 @@ flowchart LR
 | 1–4 | Done | Phase 1 + Phase 2 (10 stages) |
 | 5. Risk modeling | Done | `generate_volatility_metrics`, `generate_var_metrics`, `generate_cvar_metrics`, `generate_correlations` |
 | 6. Portfolio optimization | Done | `generate_portfolio_metrics`, `optimize_portfolios`, `generate_efficient_frontier` |
-| 7. Evaluation | Partial | DVCLive metrics + `data/analytics/risk/` |
+| 7. Research & evaluation | Done | `generate_simulations` … `generate_research_reports` |
 
 ### DVC stage flow
 
@@ -51,6 +52,14 @@ flowchart TB
   risk_corr --> risk_port[generate_portfolio_metrics]
   risk_port --> risk_opt[optimize_portfolios]
   risk_opt --> risk_front[generate_efficient_frontier]
+  risk_front --> gen_sim[generate_simulations]
+  gen_sim --> run_bt[run_backtests]
+  gen_sim --> run_stress[run_stress_tests]
+  run_stress --> run_scen[run_scenario_analysis]
+  run_bt --> eval_perf[evaluate_performance]
+  gen_sim --> eval_perf
+  eval_perf --> cmp_exp[compare_experiments]
+  eval_perf --> gen_rep[generate_research_reports]
 ```
 
 ## Features

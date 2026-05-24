@@ -20,7 +20,9 @@ data/processed/
 data/features/
 data/risk/
 data/analytics/
+data/research/
 data/raw/portfolio/
+experiments/
 models/
 reports/
 metrics/market_ingest/

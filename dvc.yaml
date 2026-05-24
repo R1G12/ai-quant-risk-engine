@@ -2,233 +2,406 @@ stages:
   ingest:
     cmd: python -m src.ingestion.ingest
     deps:
-      - src/ingestion/
-      - src/utils/
-      - configs/
+    - src/ingestion/
+    - src/utils/
+    - configs/
     params:
-      - ingestion.seed
+    - ingestion.seed
     outs:
-      - data/raw/news.csv
+    - data/raw/news.csv
 
   preprocess:
     cmd: python -m src.preprocessing.preprocess
     deps:
-      - data/raw/news.csv
-      - src/preprocessing/
-      - src/utils/
-      - configs/
+    - data/raw/news.csv
+    - src/preprocessing/
+    - src/utils/
+    - configs/
     params:
-      - preprocessing.seed
+    - preprocessing.seed
     outs:
-      - data/processed/news.parquet
+    - data/processed/news.parquet
 
   sentiment:
     cmd: python -m src.sentiment.finbert
     deps:
-      - data/processed/news.parquet
-      - src/sentiment/
-      - src/utils/
-      - configs/
+    - data/processed/news.parquet
+    - src/sentiment/
+    - src/utils/
+    - configs/
     params:
-      - sentiment.batch_size
-      - sentiment.max_seq_length
-      - sentiment.model_name
+    - sentiment.batch_size
+    - sentiment.max_seq_length
+    - sentiment.model_name
     outs:
-      - data/processed/sentiment.parquet
-      - metrics/sentiment/
+    - data/processed/sentiment.parquet
+    - metrics/sentiment/
 
   ingest_market_data:
     cmd: python -m src.market.ingest
     deps:
-      - src/market/
-      - src/utils/
-      - configs/
+    - src/market/
+    - src/utils/
+    - configs/
     params:
-      - market.source
-      - market.tickers
-      - market.start_date
-      - market.end_date
+    - market.source
+    - market.tickers
+    - market.start_date
+    - market.end_date
     outs:
-      - data/raw/market/
+    - data/raw/market/
 
   clean_market_data:
     cmd: python -m src.market.clean
     deps:
-      - data/raw/market/
-      - src/market/
-      - src/utils/
-      - configs/
+    - data/raw/market/
+    - src/market/
+    - src/utils/
+    - configs/
     params:
-      - market.compression
+    - market.compression
     outs:
-      - data/processed/market/
+    - data/processed/market/
 
   generate_returns:
     cmd: python -m src.features.pipeline.returns_stage
     deps:
-      - data/processed/market/
-      - src/features/
-      - src/market/
-      - src/utils/
-      - configs/
+    - data/processed/market/
+    - src/features/
+    - src/market/
+    - src/utils/
+    - configs/
     params:
-      - features.volatility_window
+    - features.volatility_window
     outs:
-      - data/features/returns/
+    - data/features/returns/
 
   generate_volatility_features:
     cmd: python -m src.features.pipeline.volatility_stage
     deps:
-      - data/features/returns/
-      - src/features/
-      - src/utils/
-      - configs/
+    - data/features/returns/
+    - src/features/
+    - src/utils/
+    - configs/
     params:
-      - features.volatility_window
-      - features.sharpe_window
-      - features.risk_free_rate
+    - features.volatility_window
+    - features.sharpe_window
+    - features.risk_free_rate
     outs:
-      - data/features/volatility/
+    - data/features/volatility/
 
   generate_technical_features:
     cmd: python -m src.features.pipeline.technical_stage
     deps:
-      - data/features/returns/
-      - src/features/
-      - src/utils/
-      - configs/
+    - data/features/returns/
+    - src/features/
+    - src/utils/
+    - configs/
     params:
-      - features.momentum_window
-      - features.sma_windows
-      - features.correlation_window
+    - features.momentum_window
+    - features.sma_windows
+    - features.correlation_window
     outs:
-      - data/features/technical/
+    - data/features/technical/
 
   generate_sentiment_features:
     cmd: python -m src.features.pipeline.sentiment_stage
     deps:
-      - data/processed/sentiment.parquet
-      - src/features/
-      - src/utils/
-      - configs/
-      - configs/sentiment_map.yaml
+    - data/processed/sentiment.parquet
+    - src/features/
+    - src/utils/
+    - configs/
+    - configs/sentiment_map.yaml
     outs:
-      - data/features/sentiment_agg/
+    - data/features/sentiment_agg/
 
   merge_features:
     cmd: python -m src.features.pipeline.merge_stage
     deps:
-      - data/features/returns/
-      - data/features/volatility/
-      - data/features/technical/
-      - data/features/sentiment_agg/
-      - src/features/
-      - src/utils/
-      - configs/
+    - data/features/returns/
+    - data/features/volatility/
+    - data/features/technical/
+    - data/features/sentiment_agg/
+    - src/features/
+    - src/utils/
+    - configs/
     outs:
-      - data/features/merged/
+    - data/features/merged/
 
   generate_volatility_metrics:
     cmd: python -m src.risk.pipeline.volatility_stage
     deps:
-      - data/features/merged/
-      - src/risk/
-      - src/utils/
-      - configs/
-      - configs/risk/
+    - data/features/merged/
+    - src/risk/
+    - src/utils/
+    - configs/
+    - configs/risk/
     params:
-      - risk.volatility.ewma_span
-      - risk.volatility.rolling_vol_window
-      - risk.volatility.long_vol_window
+    - risk.volatility.ewma_span
+    - risk.volatility.rolling_vol_window
+    - risk.volatility.long_vol_window
     outs:
-      - data/risk/volatility/
+    - data/risk/volatility/
 
   generate_var_metrics:
     cmd: python -m src.risk.pipeline.var_stage
     deps:
-      - data/features/merged/
-      - data/risk/volatility/
-      - src/risk/
-      - configs/risk/
+    - data/features/merged/
+    - data/risk/volatility/
+    - src/risk/
+    - configs/risk/
     params:
-      - risk.var.confidence_levels
-      - risk.var.n_simulations
-      - risk.var.seed
+    - risk.var.confidence_levels
+    - risk.var.n_simulations
+    - risk.var.seed
     outs:
-      - data/risk/var/
+    - data/risk/var/
 
   generate_cvar_metrics:
     cmd: python -m src.risk.pipeline.cvar_stage
     deps:
-      - data/features/merged/
-      - data/risk/var/
-      - src/risk/
-      - configs/risk/
+    - data/features/merged/
+    - data/risk/var/
+    - src/risk/
+    - configs/risk/
     params:
-      - risk.var.confidence_levels
-      - risk.var.seed
+    - risk.var.confidence_levels
+    - risk.var.seed
     outs:
-      - data/risk/cvar/
+    - data/risk/cvar/
 
   generate_correlations:
     cmd: python -m src.risk.pipeline.correlations_stage
     deps:
-      - data/features/merged/
-      - src/risk/
-      - configs/risk/
+    - data/features/merged/
+    - src/risk/
+    - configs/risk/
     params:
-      - risk.optimization.shrinkage
-      - features.correlation_window
+    - risk.optimization.shrinkage
+    - features.correlation_window
     outs:
-      - data/risk/correlations/
+    - data/risk/correlations/
 
   generate_portfolio_metrics:
     cmd: python -m src.risk.pipeline.portfolio_stage
     deps:
-      - data/features/merged/
-      - data/risk/volatility/
-      - src/risk/
-      - configs/risk/
+    - data/features/merged/
+    - data/risk/volatility/
+    - src/risk/
+    - configs/risk/
     params:
-      - risk.portfolio.benchmark_ticker
-      - risk.portfolio.rolling_metrics_window
-      - risk.hmm_n_regimes
+    - risk.portfolio.benchmark_ticker
+    - risk.portfolio.rolling_metrics_window
+    - risk.hmm_n_regimes
     outs:
-      - data/risk/portfolio/
+    - data/risk/portfolio/
 
   optimize_portfolios:
     cmd: python -m src.risk.pipeline.optimization_stage
     deps:
-      - data/features/merged/
-      - data/risk/correlations/
-      - src/risk/
-      - configs/risk/
+    - data/features/merged/
+    - data/risk/correlations/
+    - src/risk/
+    - configs/risk/
     params:
-      - risk.optimization.long_only
-      - risk.optimization.max_weight
-      - risk.optimization.shrinkage
+    - risk.optimization.long_only
+    - risk.optimization.max_weight
+    - risk.optimization.shrinkage
     outs:
-      - data/risk/optimization/
+    - data/risk/optimization/
 
   generate_efficient_frontier:
     cmd: python -m src.risk.pipeline.frontier_stage
     deps:
-      - data/risk/optimization/
-      - data/features/merged/
-      - src/risk/
-      - src/analytics/
-      - configs/risk/
+    - data/risk/optimization/
+    - data/features/merged/
+    - src/risk/
+    - src/analytics/
+    - configs/risk/
     params:
-      - risk.optimization.frontier_points
+    - risk.optimization.frontier_points
     outs:
-      - data/risk/frontier/
-      - data/analytics/risk/
+    - data/risk/frontier/
+    - data/analytics/risk/
+
+  generate_simulations:
+    cmd: python -m src.simulation.pipeline.simulation_stage
+    deps:
+    - data/features/merged/
+    - data/risk/portfolio/
+    - data/risk/correlations/
+    - data/risk/optimization/
+    - src/simulation/
+    - src/risk/
+    - configs/simulation/
+    - configs/research.yaml
+    params:
+    - research.simulation.n_paths
+    - research.simulation.horizon_days
+    - research.simulation.seed
+    - research.meta.experiment_id
+    outs:
+    - data/research/simulations/
+    - metrics/research_simulations/
+    - experiments/simulations/
+
+  run_backtests:
+    cmd: python -m src.backtesting.pipeline.backtest_stage
+    deps:
+    - data/features/merged/
+    - data/risk/optimization/
+    - data/raw/portfolio/
+    - src/backtesting/
+    - src/risk/
+    - configs/backtesting/
+    - configs/research.yaml
+    params:
+    - research.backtest.tc_bps
+    - research.backtest.slippage_bps
+    - research.backtest.weight_source
+    - research.meta.experiment_id
+    outs:
+    - data/research/backtests/
+    - metrics/research_backtests/
+    - experiments/backtests/
+
+  run_stress_tests:
+    cmd: python -m src.simulation.pipeline.stress_stage
+    deps:
+    - data/research/simulations/
+    - data/risk/portfolio/
+    - src/simulation/
+    - configs/scenarios/
+    - configs/simulation/
+    - configs/research.yaml
+    params:
+    - research.simulation.n_paths
+    - research.simulation.seed
+    - research.meta.experiment_id
+    outs:
+    - data/research/stress/
+    - metrics/research_stress/
+    - experiments/stress_tests/
+
+  run_scenario_analysis:
+    cmd: python -m src.simulation.pipeline.scenario_stage
+    deps:
+    - data/risk/portfolio/
+    - src/simulation/
+    - configs/scenarios/
+    - configs/simulation/
+    - configs/research.yaml
+    params:
+    - research.meta.experiment_id
+    outs:
+    - data/research/scenarios/
+    - metrics/research_scenarios/
+
+  evaluate_performance:
+    cmd: python -m src.research.pipeline.evaluate_stage
+    deps:
+    - data/research/backtests/
+    - data/research/simulations/
+    - src/research/
+    - configs/research.yaml
+    params:
+    - research.meta.experiment_id
+    outs:
+    - data/research/evaluation/
+    - metrics/research_evaluation/
+
+  compare_experiments:
+    cmd: python -m src.research.pipeline.compare_stage
+    deps:
+    - experiments/
+    - src/research/
+    outs:
+    - data/research/comparisons/
+    - metrics/research_compare/
+
+  generate_research_reports:
+    cmd: python -m src.research.pipeline.report_stage
+    deps:
+    - data/research/evaluation/
+    - data/research/backtests/
+    - data/research/simulations/
+    - data/research/stress/
+    - data/research/scenarios/
+    - src/research/
+    - src/analytics/
+    params:
+    - research.meta.experiment_id
+    outs:
+    - data/analytics/research/
+    - data/analytics/dashboard/
+    - data/research/reports/
+    - metrics/research_reports/
 
 metrics:
-  - metrics/sentiment/metrics.json
-  - metrics/market_ingest/metrics.json
-  - metrics/market_clean/metrics.json
-  - metrics/features_merge/metrics.json
+- metrics/sentiment/metrics.json
+- metrics/market_ingest/metrics.json
+- metrics/market_clean/metrics.json
+- metrics/features_merge/metrics.json
+- metrics/research_simulations/metrics.json
+- metrics/research_backtests/metrics.json
+- metrics/research_simulations/metrics.json
+- metrics/research_backtests/metrics.json
+- metrics/research_stress/metrics.json
+- metrics/research_scenarios/metrics.json
+- metrics/research_evaluation/metrics.json
+- metrics/research_compare/metrics.json
+- metrics/research_reports/metrics.json
+- metrics/research_simulations/metrics.json
+- metrics/research_stress/metrics.json
+- metrics/research_evaluation/metrics.json
+- metrics/research_reports/metrics.json
+- metrics/research_simulations/metrics.json
+- metrics/research_simulations/metrics.json
+- metrics/research_backtests/metrics.json
+- metrics/research_stress/metrics.json
+- metrics/research_scenarios/metrics.json
+- metrics/research_evaluation/metrics.json
+- metrics/research_reports/metrics.json
 plots:
-  - metrics/sentiment/plots/metrics:
-      x: step
+- metrics/sentiment/plots/metrics:
+    x: step
+- metrics/research_simulations/plots/metrics:
+    x: step
+- metrics/research_backtests/plots/metrics:
+    x: step
+- metrics/research_simulations/plots/metrics:
+    x: step
+- metrics/research_backtests/plots/metrics:
+    x: step
+- metrics/research_stress/plots/metrics:
+    x: step
+- metrics/research_scenarios/plots/metrics:
+    x: step
+- metrics/research_evaluation/plots/metrics:
+    x: step
+- metrics/research_compare/plots/metrics:
+    x: step
+- metrics/research_reports/plots/metrics:
+    x: step
+- metrics/research_simulations/plots/metrics:
+    x: step
+- metrics/research_stress/plots/metrics:
+    x: step
+- metrics/research_evaluation/plots/metrics:
+    x: step
+- metrics/research_reports/plots/metrics:
+    x: step
+- metrics/research_simulations/plots/metrics:
+    x: step
+- metrics/research_simulations/plots/metrics:
+    x: step
+- metrics/research_backtests/plots/metrics:
+    x: step
+- metrics/research_stress/plots/metrics:
+    x: step
+- metrics/research_scenarios/plots/metrics:
+    x: step
+- metrics/research_evaluation/plots/metrics:
+    x: step
+- metrics/research_reports/plots/metrics:
+    x: step

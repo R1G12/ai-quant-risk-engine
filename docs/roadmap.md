@@ -27,7 +27,17 @@
 - [x] Markowitz optimization + efficient frontier
 - [x] DVC stages + Plotly analytics + tests
 
-## Phase 4 – Private markets (research)
+## Phase 4 – Research, backtesting, and simulation (complete)
+
+- [x] GBM + multivariate Cholesky Monte Carlo
+- [x] Portfolio path summaries, stress tests, scenario analysis
+- [x] Historical backtest with costs/slippage
+- [x] Regime-conditioned GBM from Phase 3 HMM
+- [x] DVC stages + `dvc exp run` + DVCLive manifests
+- [x] Research Plotly dashboards + validation tests
+- [x] Docs: `research_framework.md`, `backtesting_methodology.md`, `simulation_architecture.md`, `experiment_tracking.md`
+
+## Phase 5 – Private markets (stretch)
 
 - Sparse fundamentals → Monte Carlo at scale
 - Quantum Amplitude Estimation research track

@@ -1,0 +1,12 @@
+required_columns:
+  equity_curve:
+    - timestamp
+    - portfolio_return
+    - equity
+  rolling_metrics:
+    - timestamp
+    - rolling_sharpe
+  trades:
+    - timestamp
+    - turnover
+    - cost

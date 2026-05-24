@@ -5,19 +5,19 @@ stages:
     deps:
     - path: configs/
       hash: md5
-      md5: 4438a6c54193f8e07a5602b1d70e396a.dir
-      size: 2828
-      nfiles: 18
+      md5: 21df76eb3c68f0a4be14baaae90ffded.dir
+      size: 4026
+      nfiles: 24
     - path: src/ingestion/
       hash: md5
-      md5: 7a0e500f2f2670a291bf1277c9e1b7b4.dir
+      md5: e0df6e6fe621e827f9172ab2fe07136f.dir
       size: 11618
       nfiles: 6
     - path: src/utils/
       hash: md5
-      md5: ae0066feee672250759504004d3ecc56.dir
-      size: 58399
-      nfiles: 18
+      md5: 0f478ac8ec7005d829bab9254b556464.dir
+      size: 76041
+      nfiles: 20
     params:
       params.yaml:
         ingestion.seed: 42
@@ -31,23 +31,23 @@ stages:
     deps:
     - path: configs/
       hash: md5
-      md5: 4438a6c54193f8e07a5602b1d70e396a.dir
-      size: 2828
-      nfiles: 18
+      md5: 21df76eb3c68f0a4be14baaae90ffded.dir
+      size: 4026
+      nfiles: 24
     - path: data/raw/news.csv
       hash: md5
       md5: be7690a031b3164a4633f45e90b7717b
       size: 571
     - path: src/preprocessing/
       hash: md5
-      md5: e4e74dfd365198173ed5dd4039c42e48.dir
+      md5: c112405e4b472ffa2f9f1c9723c36f9c.dir
       size: 12791
       nfiles: 6
     - path: src/utils/
       hash: md5
-      md5: ae0066feee672250759504004d3ecc56.dir
-      size: 58399
-      nfiles: 18
+      md5: 0f478ac8ec7005d829bab9254b556464.dir
+      size: 76041
+      nfiles: 20
     params:
       params.yaml:
         preprocessing.seed: 42
@@ -61,23 +61,23 @@ stages:
     deps:
     - path: configs/
       hash: md5
-      md5: 4438a6c54193f8e07a5602b1d70e396a.dir
-      size: 2828
-      nfiles: 18
+      md5: 21df76eb3c68f0a4be14baaae90ffded.dir
+      size: 4026
+      nfiles: 24
     - path: data/processed/news.parquet
       hash: md5
       md5: 948110edf044b4222da9e28da60f6fc6
       size: 3739
     - path: src/sentiment/
       hash: md5
-      md5: 094e329ada7c146cdb095c24cf60a9fc.dir
+      md5: 2cabf079e4a400dfe5a7d36ea8487d85.dir
       size: 20616
       nfiles: 6
     - path: src/utils/
       hash: md5
-      md5: ae0066feee672250759504004d3ecc56.dir
-      size: 58399
-      nfiles: 18
+      md5: 0f478ac8ec7005d829bab9254b556464.dir
+      size: 76041
+      nfiles: 20
     params:
       params.yaml:
         sentiment.batch_size: 32
@@ -98,9 +98,9 @@ stages:
     deps:
     - path: configs/
       hash: md5
-      md5: 4438a6c54193f8e07a5602b1d70e396a.dir
-      size: 2828
-      nfiles: 18
+      md5: 21df76eb3c68f0a4be14baaae90ffded.dir
+      size: 4026
+      nfiles: 24
     - path: src/market/
       hash: md5
       md5: a54cd159e551165fd1c7977e3a985e23.dir
@@ -108,9 +108,9 @@ stages:
       nfiles: 21
     - path: src/utils/
       hash: md5
-      md5: ae0066feee672250759504004d3ecc56.dir
-      size: 58399
-      nfiles: 18
+      md5: 0f478ac8ec7005d829bab9254b556464.dir
+      size: 76041
+      nfiles: 20
     params:
       params.yaml:
         market.end_date: '2024-03-31'
@@ -133,9 +133,9 @@ stages:
     deps:
     - path: configs/
       hash: md5
-      md5: 4438a6c54193f8e07a5602b1d70e396a.dir
-      size: 2828
-      nfiles: 18
+      md5: 21df76eb3c68f0a4be14baaae90ffded.dir
+      size: 4026
+      nfiles: 24
     - path: data/raw/market/
       hash: md5
       md5: b16d61fb44e72a3c0d8f70a81ce6eb2d.dir
@@ -148,16 +148,16 @@ stages:
       nfiles: 21
     - path: src/utils/
       hash: md5
-      md5: ae0066feee672250759504004d3ecc56.dir
-      size: 58399
-      nfiles: 18
+      md5: 0f478ac8ec7005d829bab9254b556464.dir
+      size: 76041
+      nfiles: 20
     params:
       params.yaml:
         market.compression: zstd
     outs:
     - path: data/processed/market/
       hash: md5
-      md5: f60a44ae306c78de5dd0dc0a4c697671.dir
+      md5: d7a8d917590116b693595237bd11174f.dir
       size: 16068
       nfiles: 3
   generate_returns:
@@ -165,12 +165,12 @@ stages:
     deps:
     - path: configs/
       hash: md5
-      md5: 4438a6c54193f8e07a5602b1d70e396a.dir
-      size: 2828
-      nfiles: 18
+      md5: 21df76eb3c68f0a4be14baaae90ffded.dir
+      size: 4026
+      nfiles: 24
     - path: data/processed/market/
       hash: md5
-      md5: f60a44ae306c78de5dd0dc0a4c697671.dir
+      md5: d7a8d917590116b693595237bd11174f.dir
       size: 16068
       nfiles: 3
     - path: src/features/
@@ -185,16 +185,16 @@ stages:
       nfiles: 21
     - path: src/utils/
       hash: md5
-      md5: ae0066feee672250759504004d3ecc56.dir
-      size: 58399
-      nfiles: 18
+      md5: 0f478ac8ec7005d829bab9254b556464.dir
+      size: 76041
+      nfiles: 20
     params:
       params.yaml:
         features.volatility_window: 21
     outs:
     - path: data/features/returns/
       hash: md5
-      md5: 80f90361799e1c0cf230386f88f82a7d.dir
+      md5: eeef666af8177aeb7db69f1fd40bb0ca.dir
       size: 13130
       nfiles: 1
   generate_volatility_features:
@@ -202,12 +202,12 @@ stages:
     deps:
     - path: configs/
       hash: md5
-      md5: 4438a6c54193f8e07a5602b1d70e396a.dir
-      size: 2828
-      nfiles: 18
+      md5: 21df76eb3c68f0a4be14baaae90ffded.dir
+      size: 4026
+      nfiles: 24
     - path: data/features/returns/
       hash: md5
-      md5: 80f90361799e1c0cf230386f88f82a7d.dir
+      md5: eeef666af8177aeb7db69f1fd40bb0ca.dir
       size: 13130
       nfiles: 1
     - path: src/features/
@@ -217,9 +217,9 @@ stages:
       nfiles: 34
     - path: src/utils/
       hash: md5
-      md5: ae0066feee672250759504004d3ecc56.dir
-      size: 58399
-      nfiles: 18
+      md5: 0f478ac8ec7005d829bab9254b556464.dir
+      size: 76041
+      nfiles: 20
     params:
       params.yaml:
         features.risk_free_rate: 0.05
@@ -228,7 +228,7 @@ stages:
     outs:
     - path: data/features/volatility/
       hash: md5
-      md5: 96fd06cba223de9c24d85a9429ec08ab.dir
+      md5: 318429a6eaa9d0f585791c96c75fb12f.dir
       size: 18538
       nfiles: 1
   generate_technical_features:
@@ -236,12 +236,12 @@ stages:
     deps:
     - path: configs/
       hash: md5
-      md5: 4438a6c54193f8e07a5602b1d70e396a.dir
-      size: 2828
-      nfiles: 18
+      md5: 21df76eb3c68f0a4be14baaae90ffded.dir
+      size: 4026
+      nfiles: 24
     - path: data/features/returns/
       hash: md5
-      md5: 80f90361799e1c0cf230386f88f82a7d.dir
+      md5: eeef666af8177aeb7db69f1fd40bb0ca.dir
       size: 13130
       nfiles: 1
     - path: src/features/
@@ -251,9 +251,9 @@ stages:
       nfiles: 34
     - path: src/utils/
       hash: md5
-      md5: ae0066feee672250759504004d3ecc56.dir
-      size: 58399
-      nfiles: 18
+      md5: 0f478ac8ec7005d829bab9254b556464.dir
+      size: 76041
+      nfiles: 20
     params:
       params.yaml:
         features.correlation_window: 30
@@ -264,17 +264,17 @@ stages:
     outs:
     - path: data/features/technical/
       hash: md5
-      md5: c887ec085b51bf0baf2ebd2721285e92.dir
-      size: 22393
+      md5: ab2731272e7406cfd4cde5ad4dc6085e.dir
+      size: 22829
       nfiles: 1
   generate_sentiment_features:
     cmd: python -m src.features.pipeline.sentiment_stage
     deps:
     - path: configs/
       hash: md5
-      md5: 4438a6c54193f8e07a5602b1d70e396a.dir
-      size: 2828
-      nfiles: 18
+      md5: 21df76eb3c68f0a4be14baaae90ffded.dir
+      size: 4026
+      nfiles: 24
     - path: configs/sentiment_map.yaml
       hash: md5
       md5: 9d333b5b5925d2453bbe6fcf572cda5a
@@ -290,13 +290,13 @@ stages:
       nfiles: 34
     - path: src/utils/
       hash: md5
-      md5: ae0066feee672250759504004d3ecc56.dir
-      size: 58399
-      nfiles: 18
+      md5: 0f478ac8ec7005d829bab9254b556464.dir
+      size: 76041
+      nfiles: 20
     outs:
     - path: data/features/sentiment_agg/
       hash: md5
-      md5: 0cc581f1f918405f8ce6a18fc2b51823.dir
+      md5: 49e756d9281435fcc4eb4412a7a4f523.dir
       size: 2313
       nfiles: 1
   merge_features:
@@ -304,27 +304,27 @@ stages:
     deps:
     - path: configs/
       hash: md5
-      md5: 4438a6c54193f8e07a5602b1d70e396a.dir
-      size: 2828
-      nfiles: 18
+      md5: 21df76eb3c68f0a4be14baaae90ffded.dir
+      size: 4026
+      nfiles: 24
     - path: data/features/returns/
       hash: md5
-      md5: 80f90361799e1c0cf230386f88f82a7d.dir
+      md5: eeef666af8177aeb7db69f1fd40bb0ca.dir
       size: 13130
       nfiles: 1
     - path: data/features/sentiment_agg/
       hash: md5
-      md5: 0cc581f1f918405f8ce6a18fc2b51823.dir
+      md5: 49e756d9281435fcc4eb4412a7a4f523.dir
       size: 2313
       nfiles: 1
     - path: data/features/technical/
       hash: md5
-      md5: c887ec085b51bf0baf2ebd2721285e92.dir
-      size: 22393
+      md5: ab2731272e7406cfd4cde5ad4dc6085e.dir
+      size: 22829
       nfiles: 1
     - path: data/features/volatility/
       hash: md5
-      md5: 96fd06cba223de9c24d85a9429ec08ab.dir
+      md5: 318429a6eaa9d0f585791c96c75fb12f.dir
       size: 18538
       nfiles: 1
     - path: src/features/
@@ -334,23 +334,23 @@ stages:
       nfiles: 34
     - path: src/utils/
       hash: md5
-      md5: ae0066feee672250759504004d3ecc56.dir
-      size: 58399
-      nfiles: 18
+      md5: 0f478ac8ec7005d829bab9254b556464.dir
+      size: 76041
+      nfiles: 20
     outs:
     - path: data/features/merged/
       hash: md5
-      md5: 9cd8075a89432ad0313bcbbb679cdf46.dir
-      size: 29872
+      md5: 34d2463ec1cc783481e665c1a3a4c8e9.dir
+      size: 30312
       nfiles: 2
   generate_volatility_metrics:
     cmd: python -m src.risk.pipeline.volatility_stage
     deps:
     - path: configs/
       hash: md5
-      md5: 4438a6c54193f8e07a5602b1d70e396a.dir
-      size: 2828
-      nfiles: 18
+      md5: 21df76eb3c68f0a4be14baaae90ffded.dir
+      size: 4026
+      nfiles: 24
     - path: configs/risk/
       hash: md5
       md5: 0f8eca91252ea2fa11d51114b7224a49.dir
@@ -358,19 +358,19 @@ stages:
       nfiles: 4
     - path: data/features/merged/
       hash: md5
-      md5: 9cd8075a89432ad0313bcbbb679cdf46.dir
-      size: 29872
+      md5: 34d2463ec1cc783481e665c1a3a4c8e9.dir
+      size: 30312
       nfiles: 2
     - path: src/risk/
       hash: md5
-      md5: 5925f92b1bfae9538892e7905a5f4837.dir
+      md5: 33f953114a959c2ec7a7f3cd0d249b7a.dir
       size: 101563
       nfiles: 74
     - path: src/utils/
       hash: md5
-      md5: ae0066feee672250759504004d3ecc56.dir
-      size: 58399
-      nfiles: 18
+      md5: 0f478ac8ec7005d829bab9254b556464.dir
+      size: 76041
+      nfiles: 20
     params:
       params.yaml:
         risk.volatility.ewma_span: 21
@@ -463,12 +463,12 @@ stages:
       nfiles: 4
     - path: data/features/merged/
       hash: md5
-      md5: 9cd8075a89432ad0313bcbbb679cdf46.dir
-      size: 29872
+      md5: 34d2463ec1cc783481e665c1a3a4c8e9.dir
+      size: 30312
       nfiles: 2
     - path: src/risk/
       hash: md5
-      md5: 5925f92b1bfae9538892e7905a5f4837.dir
+      md5: 33f953114a959c2ec7a7f3cd0d249b7a.dir
       size: 101563
       nfiles: 74
     params:
@@ -491,8 +491,8 @@ stages:
       nfiles: 4
     - path: data/features/merged/
       hash: md5
-      md5: 9cd8075a89432ad0313bcbbb679cdf46.dir
-      size: 29872
+      md5: 34d2463ec1cc783481e665c1a3a4c8e9.dir
+      size: 30312
       nfiles: 2
     - path: data/risk/volatility/
       hash: md5
@@ -501,7 +501,7 @@ stages:
       nfiles: 3
     - path: src/risk/
       hash: md5
-      md5: 5925f92b1bfae9538892e7905a5f4837.dir
+      md5: 33f953114a959c2ec7a7f3cd0d249b7a.dir
       size: 101563
       nfiles: 74
     params:
@@ -525,8 +525,8 @@ stages:
       nfiles: 4
     - path: data/features/merged/
       hash: md5
-      md5: 9cd8075a89432ad0313bcbbb679cdf46.dir
-      size: 29872
+      md5: 34d2463ec1cc783481e665c1a3a4c8e9.dir
+      size: 30312
       nfiles: 2
     - path: data/risk/correlations/
       hash: md5
@@ -535,7 +535,7 @@ stages:
       nfiles: 1
     - path: src/risk/
       hash: md5
-      md5: 5925f92b1bfae9538892e7905a5f4837.dir
+      md5: 33f953114a959c2ec7a7f3cd0d249b7a.dir
       size: 101563
       nfiles: 74
     params:
@@ -591,3 +591,342 @@ stages:
       md5: 45f8300d3469d871d14ca529bec75a12.dir
       size: 2150
       nfiles: 1
+  generate_simulations:
+    cmd: python -m src.simulation.pipeline.simulation_stage
+    deps:
+    - path: configs/research.yaml
+      hash: md5
+      md5: 7d0e6c3ea8fc41907e9ccaa7d93d1125
+      size: 53
+    - path: configs/simulation/
+      hash: md5
+      md5: d502de4dcb9ad1b042a4f8efa08a7f02.dir
+      size: 148
+      nfiles: 1
+    - path: data/features/merged/
+      hash: md5
+      md5: 34d2463ec1cc783481e665c1a3a4c8e9.dir
+      size: 30312
+      nfiles: 2
+    - path: data/risk/correlations/
+      hash: md5
+      md5: 708a7ccdfab9d0ea40673cf0c6188d7f.dir
+      size: 2156
+      nfiles: 1
+    - path: data/risk/optimization/
+      hash: md5
+      md5: b1d75912cf86496a15dc0d7d4e201ade.dir
+      size: 2948
+      nfiles: 3
+    - path: data/risk/portfolio/
+      hash: md5
+      md5: e858da295d0b299c14dc811ee099b8f0.dir
+      size: 9531
+      nfiles: 4
+    - path: src/risk/
+      hash: md5
+      md5: 33f953114a959c2ec7a7f3cd0d249b7a.dir
+      size: 101563
+      nfiles: 74
+    - path: src/simulation/
+      hash: md5
+      md5: 0500acbef60b63e6dcf6051efcf2a700.dir
+      size: 49381
+      nfiles: 32
+    params:
+      params.yaml:
+        research.meta.experiment_id: baseline
+        research.simulation.horizon_days: 63
+        research.simulation.n_paths: 2000
+        research.simulation.seed: 42
+    outs:
+    - path: data/research/simulations/
+      hash: md5
+      md5: 128c4b00249ad0498acf27aebfa2f0c9.dir
+      size: 117887
+      nfiles: 6
+    - path: experiments/simulations/
+      hash: md5
+      md5: 8f3cab5881fcf0cd3bc482b6addb13ab.dir
+      size: 704
+      nfiles: 1
+    - path: metrics/research_simulations/
+      hash: md5
+      md5: 3c01c8d9a47fe9dfb2906b82f249dcd0.dir
+      size: 103
+      nfiles: 3
+  run_backtests:
+    cmd: python -m src.backtesting.pipeline.backtest_stage
+    deps:
+    - path: configs/backtesting/
+      hash: md5
+      md5: d85bb3a539a08c2690307c7f7d0dcefb.dir
+      size: 159
+      nfiles: 1
+    - path: configs/research.yaml
+      hash: md5
+      md5: 7d0e6c3ea8fc41907e9ccaa7d93d1125
+      size: 53
+    - path: data/features/merged/
+      hash: md5
+      md5: 34d2463ec1cc783481e665c1a3a4c8e9.dir
+      size: 30312
+      nfiles: 2
+    - path: data/raw/portfolio/
+      hash: md5
+      md5: 47280a46b44c23b32262f435ba09b7a2.dir
+      size: 819
+      nfiles: 1
+    - path: data/risk/optimization/
+      hash: md5
+      md5: b1d75912cf86496a15dc0d7d4e201ade.dir
+      size: 2948
+      nfiles: 3
+    - path: src/backtesting/
+      hash: md5
+      md5: 49be4e4b7d8feebbd9cbb36d44eed378.dir
+      size: 24215
+      nfiles: 18
+    - path: src/risk/
+      hash: md5
+      md5: 33f953114a959c2ec7a7f3cd0d249b7a.dir
+      size: 101563
+      nfiles: 74
+    params:
+      params.yaml:
+        research.backtest.slippage_bps: 5.0
+        research.backtest.tc_bps: 10.0
+        research.backtest.weight_source: max_sharpe
+        research.meta.experiment_id: baseline
+    outs:
+    - path: data/research/backtests/
+      hash: md5
+      md5: 30ed790c35f14bebf8fac5b7d9b34674.dir
+      size: 13856
+      nfiles: 3
+    - path: experiments/backtests/
+      hash: md5
+      md5: b330e68b42c35ea508dfee6fe2f9bb85.dir
+      size: 406
+      nfiles: 1
+    - path: metrics/research_backtests/
+      hash: md5
+      md5: 65da1c91404d9cf946810c865227f4e9.dir
+      size: 193
+      nfiles: 4
+  run_stress_tests:
+    cmd: python -m src.simulation.pipeline.stress_stage
+    deps:
+    - path: configs/research.yaml
+      hash: md5
+      md5: 7d0e6c3ea8fc41907e9ccaa7d93d1125
+      size: 53
+    - path: configs/scenarios/
+      hash: md5
+      md5: 2c316f6df4c3f53dabbad91298cec695.dir
+      size: 465
+      nfiles: 1
+    - path: configs/simulation/
+      hash: md5
+      md5: d502de4dcb9ad1b042a4f8efa08a7f02.dir
+      size: 148
+      nfiles: 1
+    - path: data/research/simulations/
+      hash: md5
+      md5: 128c4b00249ad0498acf27aebfa2f0c9.dir
+      size: 117887
+      nfiles: 6
+    - path: data/risk/portfolio/
+      hash: md5
+      md5: e858da295d0b299c14dc811ee099b8f0.dir
+      size: 9531
+      nfiles: 4
+    - path: src/simulation/
+      hash: md5
+      md5: 0500acbef60b63e6dcf6051efcf2a700.dir
+      size: 49381
+      nfiles: 32
+    params:
+      params.yaml:
+        research.meta.experiment_id: baseline
+        research.simulation.n_paths: 2000
+        research.simulation.seed: 42
+    outs:
+    - path: data/research/stress/
+      hash: md5
+      md5: 723347e748067d98d344f26bc7f8217c.dir
+      size: 2715
+      nfiles: 1
+    - path: experiments/stress_tests/
+      hash: md5
+      md5: 59e3c55845c5583cf318f5ec4d1d2156.dir
+      size: 461
+      nfiles: 1
+    - path: metrics/research_stress/
+      hash: md5
+      md5: 959850096560588a22a128ead1015bce.dir
+      size: 137
+      nfiles: 3
+  run_scenario_analysis:
+    cmd: python -m src.simulation.pipeline.scenario_stage
+    deps:
+    - path: configs/research.yaml
+      hash: md5
+      md5: 7d0e6c3ea8fc41907e9ccaa7d93d1125
+      size: 53
+    - path: configs/scenarios/
+      hash: md5
+      md5: 2c316f6df4c3f53dabbad91298cec695.dir
+      size: 465
+      nfiles: 1
+    - path: configs/simulation/
+      hash: md5
+      md5: d502de4dcb9ad1b042a4f8efa08a7f02.dir
+      size: 148
+      nfiles: 1
+    - path: data/risk/portfolio/
+      hash: md5
+      md5: e858da295d0b299c14dc811ee099b8f0.dir
+      size: 9531
+      nfiles: 4
+    - path: src/simulation/
+      hash: md5
+      md5: 0500acbef60b63e6dcf6051efcf2a700.dir
+      size: 49381
+      nfiles: 32
+    params:
+      params.yaml:
+        research.meta.experiment_id: baseline
+    outs:
+    - path: data/research/scenarios/
+      hash: md5
+      md5: 52de223bb8473b0843c8ca920873fea3.dir
+      size: 2712
+      nfiles: 1
+    - path: metrics/research_scenarios/
+      hash: md5
+      md5: e5e066970c0f7add0bd6746fd3a28be5.dir
+      size: 47
+      nfiles: 2
+  evaluate_performance:
+    cmd: python -m src.research.pipeline.evaluate_stage
+    deps:
+    - path: configs/research.yaml
+      hash: md5
+      md5: 7d0e6c3ea8fc41907e9ccaa7d93d1125
+      size: 53
+    - path: data/research/backtests/
+      hash: md5
+      md5: 30ed790c35f14bebf8fac5b7d9b34674.dir
+      size: 13856
+      nfiles: 3
+    - path: data/research/simulations/
+      hash: md5
+      md5: 128c4b00249ad0498acf27aebfa2f0c9.dir
+      size: 117887
+      nfiles: 6
+    - path: src/research/
+      hash: md5
+      md5: 62322ce989bf85eada23b12f10c8be77.dir
+      size: 31060
+      nfiles: 14
+    params:
+      params.yaml:
+        research.meta.experiment_id: baseline
+    outs:
+    - path: data/research/evaluation/
+      hash: md5
+      md5: 762b5beb19086f87fc5221e98411515a.dir
+      size: 3334
+      nfiles: 1
+    - path: metrics/research_evaluation/
+      hash: md5
+      md5: 4e9dac9f228ac24fad2161adbbb9ed52.dir
+      size: 37
+      nfiles: 2
+  compare_experiments:
+    cmd: python -m src.research.pipeline.compare_stage
+    deps:
+    - path: experiments/
+      hash: md5
+      md5: d54b844108e1028272264220bfb87254.dir
+      size: 1569
+      nfiles: 3
+    - path: src/research/
+      hash: md5
+      md5: 93d9ef599fee82e9a56daee780b7b92c.dir
+      size: 13884
+      nfiles: 9
+    outs:
+    - path: data/research/comparisons/
+      hash: md5
+      md5: a47cfa720c1d3f809e88e210025feb9f.dir
+      size: 7422
+      nfiles: 1
+    - path: metrics/research_compare/
+      hash: md5
+      md5: 3b24bd1dce7905c5e151d3695f04181f.dir
+      size: 47
+      nfiles: 2
+  generate_research_reports:
+    cmd: python -m src.research.pipeline.report_stage
+    deps:
+    - path: data/research/backtests/
+      hash: md5
+      md5: 30ed790c35f14bebf8fac5b7d9b34674.dir
+      size: 13856
+      nfiles: 3
+    - path: data/research/evaluation/
+      hash: md5
+      md5: 762b5beb19086f87fc5221e98411515a.dir
+      size: 3334
+      nfiles: 1
+    - path: data/research/scenarios/
+      hash: md5
+      md5: 52de223bb8473b0843c8ca920873fea3.dir
+      size: 2712
+      nfiles: 1
+    - path: data/research/simulations/
+      hash: md5
+      md5: 128c4b00249ad0498acf27aebfa2f0c9.dir
+      size: 117887
+      nfiles: 6
+    - path: data/research/stress/
+      hash: md5
+      md5: 723347e748067d98d344f26bc7f8217c.dir
+      size: 2715
+      nfiles: 1
+    - path: src/analytics/
+      hash: md5
+      md5: db797e31f1aa94cb9b2cdd15aed22039.dir
+      size: 70482
+      nfiles: 18
+    - path: src/research/
+      hash: md5
+      md5: b17a18a984125e03ce807afb766611b5.dir
+      size: 31786
+      nfiles: 14
+    params:
+      params.yaml:
+        research.meta.experiment_id: baseline
+    outs:
+    - path: data/analytics/dashboard/
+      hash: md5
+      md5: 1a644ee9eb485f94ade66cba2c837d68.dir
+      size: 307296
+      nfiles: 1
+    - path: data/analytics/research/
+      hash: md5
+      md5: 17b6a1f6572208e9199b1fb60805ef99.dir
+      size: 241250
+      nfiles: 9
+    - path: data/research/reports/
+      hash: md5
+      md5: 8f1a3a7893f32f6ebffd6f37064567a4.dir
+      size: 2350
+      nfiles: 2
+    - path: metrics/research_reports/
+      hash: md5
+      md5: 9bc8541e9648a38747a5833770cda4e4.dir
+      size: 99
+      nfiles: 3
