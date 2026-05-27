@@ -2,6 +2,7 @@
 
 import polars as pl
 
+from src.analytics.charts.context import ChartContext
 from src.analytics.charts.registry import build_chart_registry
 from src.analytics.validation import assert_equity_sane, assert_unique_timestamps
 from src.utils.config import load_app_config
@@ -12,8 +13,9 @@ def test_chart_registry_builds_without_error() -> None:
     registry = build_chart_registry()
     assert len(registry) >= 10
     built = 0
+    ctx = ChartContext(app=app)
     for spec in registry:
-        fig = spec.builder(app)
+        fig = spec.builder(ctx)
         if fig is not None:
             built += 1
     assert built >= 1

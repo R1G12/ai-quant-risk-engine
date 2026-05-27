@@ -120,6 +120,51 @@ Requires **Polars >= 1.20** for streaming partitioned parquet writes.
 
 Cursor/VS Code picks `.venv312` via [`.vscode/settings.json`](.vscode/settings.json). `pytest` fails fast on the wrong interpreter ([`tests/conftest.py`](tests/conftest.py)).
 
+## Interactive dashboard (Streamlit)
+
+Primary UX for exploring charts with a **date slider**, KPI cards, and optional **live yfinance** prices.
+
+```powershell
+.venv312\Scripts\activate
+pip install -e ".[dashboard,market,research,risk]"
+streamlit run src/analytics/streamlit_dashboard.py
+```
+
+| Action | Typical time |
+|--------|----------------|
+| Open dashboard (sample parquet) | &lt; 1–3 s |
+| Move date slider / change chart | 1–3 s |
+| Background yfinance (5 tickers, ~1Y) | ~15–45 s |
+| Full `dvc repro` + sentiment | 10–30+ min |
+
+- **Sample (default):** reads local DVC artifacts under `data/`.
+- **Live:** background fetch to `data/cache/market_live/` (gitignored); button enables when ready. Risk/backtest metrics still come from the last sample pipeline run.
+
+If live fetch fails with *"yfinance returned no data"*, upgrade and retry:
+
+```powershell
+pip install -U "yfinance>=1.3.0" "curl_cffi>=0.15"
+```
+
+Yahoo often blocks plain HTTP clients; `curl_cffi` mimics a browser. Also check DNS/network access to `fc.yahoo.com`, then use **Retry live fetch** in the sidebar.
+
+Live fetch tries several Yahoo client strategies automatically (including a no-verify SSL fallback for common Windows curl cert issues). For stricter SSL, set `$env:YFINANCE_SSL_VERIFY = "1"` only. To prefer no-verify first (dev): `$env:YFINANCE_SSL_VERIFY = "0"`.
+
+Static export (reports/CI): `data/analytics/dashboard/index.html` after `generate_research_reports`.
+
+### Refresh sample data to ~1 year
+
+After enabling rolling dates in config, run market + downstream stages once:
+
+```powershell
+$env:MARKET_SOURCE = "sample"
+# Local dev uses rolling window (end=today, start=today-365d) unless MARKET_PIN_DATES=1
+dvc repro ingest_market_data clean_market_data generate_returns merge_features
+# Add risk + research stages as needed (FinBERT sentiment is the slow step)
+```
+
+Until repro completes, the slider clamps to whatever exists on disk (e.g. 2024 Q1) with a banner in the app.
+
 ## Configure tickers and date range
 
 Edit [`params.yaml`](params.yaml) or [`configs/market.yaml`](configs/market.yaml):
@@ -128,8 +173,12 @@ Edit [`params.yaml`](params.yaml) or [`configs/market.yaml`](configs/market.yaml
 market:
   source: sample          # or yfinance
   tickers: [AAPL, MSFT, XOM, GS, JPM]
-  start_date: "2024-01-01"
-  end_date: "2024-03-31"
+  use_rolling_window: true   # end=today, start=today-rolling_days
+  rolling_days: 365
+  # Pin for CI / reproducibility:
+  # use_rolling_window: false
+  # start_date: "2024-01-01"
+  # end_date: "2024-03-31"
 ```
 
 Or per session:
@@ -140,6 +189,44 @@ dvc repro ingest_market_data clean_market_data
 ```
 
 Sentiment source → ticker mapping: [`configs/sentiment_map.yaml`](configs/sentiment_map.yaml).
+
+## Phase 5 — Portfolio intelligence platform
+
+Institutional dashboard, copilot, API, monitoring, and reports on top of Phases 1–4.
+
+```powershell
+pip install -e ".[dashboard,platform,risk,research]"
+aqre dashboard                    # multi-page platform UI
+aqre dashboard --legacy           # Phase 4 chart explorer
+aqre copilot ask "Which assets contribute most to VaR?"
+aqre api serve                    # FastAPI on :8000
+aqre workflow run platform_reports
+dvc repro generate_platform_reports
+```
+
+| Component | Location |
+|-----------|----------|
+| Platform dashboard | `src/dashboards/app.py` + `pages/` |
+| Copilot | `src/copilot/` |
+| REST API | `src/api/` |
+| Monitoring | `src/monitoring/` |
+| Reports | `reports/` (generated) |
+| Docs | `docs/system_architecture.md`, `docs/copilot_architecture.md`, … |
+
+## CLI (`aqre`)
+
+After `pip install -e ".[dev]"`, use the unified CLI for common workflows:
+
+```powershell
+aqre config show
+aqre run phase2 --market-source sample
+aqre run phase3 --market-source sample --dry-run
+aqre run stage merge_features
+aqre run all
+aqre dashboard
+```
+
+Environment overrides work as before (`MARKET_SOURCE`, `MARKET_PIN_DATES`, `NEWS_SOURCE`).
 
 ## Run pipelines
 
@@ -204,6 +291,8 @@ See [docs/mlops.md](docs/mlops.md) for more detail.
 
 ```bash
 pytest
+# Phase 5 platform smoke (copilot, API, reports, monitoring):
+pytest tests/test_phase5_integration.py tests/test_copilot_explanations.py -v
 ```
 
 ## Documentation

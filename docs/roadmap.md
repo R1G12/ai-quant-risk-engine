@@ -37,7 +37,19 @@
 - [x] Research Plotly dashboards + validation tests
 - [x] Docs: `research_framework.md`, `backtesting_methodology.md`, `simulation_architecture.md`, `experiment_tracking.md`
 
-## Phase 5 – Private markets (stretch)
+## Phase 5 – Portfolio intelligence platform (in progress)
+
+- [x] Multi-page institutional dashboard (`src/dashboards/`)
+- [x] Rule-based portfolio copilot (`src/copilot/`)
+- [x] FastAPI serving layer (`src/api/`)
+- [x] Monitoring: health, quality, drift, alerts (`src/monitoring/`)
+- [x] Institutional reports + DVC stage `generate_platform_reports`
+- [x] Orchestration workflows (`src/orchestration/`)
+- [ ] Online FinBERT inference service
+- [ ] LLM-backed copilot (optional, evidence-required)
+- [ ] OpenTelemetry / Prometheus exporters
+
+## Phase 6 – Private markets (stretch)
 
 - Sparse fundamentals → Monte Carlo at scale
 - Quantum Amplitude Estimation research track

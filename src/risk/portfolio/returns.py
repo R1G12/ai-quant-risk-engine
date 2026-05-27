@@ -4,24 +4,16 @@ from __future__ import annotations
 
 import polars as pl
 
+from src.features.wide_returns import load_returns_wide
 from src.risk.portfolio.holdings import load_weights
 from src.utils.config import AppConfig
-from src.utils.paths import PROJECT_ROOT, RISK_DATASET_PATH
 
 
 def build_portfolio_returns(app: AppConfig) -> pl.DataFrame:
     """Weighted portfolio daily returns: r_p = sum_i w_i * r_i (eager pivot for correctness)."""
     weights = load_weights(app)
     tickers = list(weights.keys())
-
-    lf = (
-        pl.scan_parquet(RISK_DATASET_PATH)
-        .filter(pl.col("ticker").is_in(tickers))
-        .filter(pl.col("returns").is_not_null())
-        .select("timestamp", "ticker", "returns")
-    )
-    long = lf.collect()
-    wide = long.pivot(on="ticker", index="timestamp", values="returns").sort("timestamp")
+    wide = load_returns_wide(tickers)
 
     port = pl.lit(0.0)
     for ticker, w in weights.items():

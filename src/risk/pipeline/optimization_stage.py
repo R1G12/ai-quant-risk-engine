@@ -7,6 +7,7 @@ import json
 import numpy as np
 import polars as pl
 
+from src.features.wide_returns import load_returns_wide
 from src.risk.correlations.covariance import ledoit_wolf_shrinkage, sample_covariance_matrix
 from src.risk.optimization.constraints import PortfolioConstraints
 from src.risk.optimization.markowitz import max_sharpe_weights, min_variance_weights, portfolio_stats
@@ -59,14 +60,7 @@ def run() -> None:
 
     tickers = list(load_weights(app).keys())
     port = build_portfolio_returns(app)
-    long = (
-        pl.scan_parquet(RISK_DATASET_PATH)
-        .filter(pl.col("ticker").is_in(tickers))
-        .filter(pl.col("returns").is_not_null())
-        .select("timestamp", "ticker", "returns")
-        .collect()
-    )
-    wide = long.pivot(on="ticker", index="timestamp", values="returns").sort("timestamp")
+    wide = load_returns_wide(tickers)
 
     cov = sample_covariance_matrix(wide, tickers)
     if app.risk.optimization.shrinkage == "ledoit_wolf":

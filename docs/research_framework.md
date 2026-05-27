@@ -23,6 +23,28 @@ See `experiment_tracking.md` for DVCLive and manifest details.
 
 After `generate_research_reports`:
 
-- **Interactive dashboard:** `data/analytics/dashboard/index.html` — chart picker with explanations
+- **Primary interactive UX:** Streamlit — `streamlit run src/analytics/streamlit_dashboard.py` (install `.[dashboard,market,research,risk]`). Date presets (1Y / 6M / 3M / YTD / All), KPI cards, sample-first with background yfinance and a **Use live data** toggle for prices.
+- **Static export (CI/reports):** `data/analytics/dashboard/index.html` — iframe chart picker
 - **Interpreted metrics:** `data/research/reports/REPORT.md`
 - Standalone Plotly files remain under `data/analytics/research/` and `data/analytics/risk/`
+
+### Latency expectations
+
+| Action | Typical time |
+|--------|----------------|
+| Open Streamlit on existing parquet | &lt; 1–3 s |
+| Date slider / chart change | 1–3 s |
+| Background yfinance (~5 tickers, 1Y) | ~15–45 s |
+| Full pipeline repro (incl. FinBERT) | 10–30+ min |
+
+### Refresh ~1 year of sample artifacts
+
+Local dev defaults to a **rolling window** (`use_rolling_window: true` in `params.yaml`). To materialize new parquet:
+
+```powershell
+$env:MARKET_SOURCE = "sample"
+dvc repro ingest_market_data clean_market_data generate_returns merge_features
+# Continue through risk + research stages as needed
+```
+
+CI pins dates via `MARKET_PIN_DATES=1` and fixed `start_date` / `end_date` in `params.yaml`.

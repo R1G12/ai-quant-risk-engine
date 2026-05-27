@@ -60,7 +60,7 @@ Do not add pandas imports to `src/` unless explicitly migrating a notebook modul
 
 - Run `dvc repro` after changing pipeline code or params
 - Commit `dvc.lock` when outputs change
-- Do not commit `.venv`, `.venv312`, `logs/`, or `data/processed/`
+- Do not commit `.venv`, `.venv312`, `logs/`, `__pycache__/`, `*.pyc`, or `data/processed/`
 - Activate `.venv312` before `dvc repro` / `pytest` so `python` on PATH is 3.12
 - Use `.env` for secrets (never commit); `.env.example` for templates
 

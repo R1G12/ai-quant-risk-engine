@@ -8,10 +8,11 @@ import numpy as np
 import polars as pl
 
 from src.analytics.charts.base import ChartSpec
+from src.analytics.charts._helpers import series_xy
+from src.analytics.charts.context import ChartContext, filter_by_date_range
 from src.analytics.validation import assert_equity_sane
 from src.simulation.monte_carlo.engine import sample_paths_for_plot
 from src.simulation.pipeline._calibration import calibrate_gbm, calibrate_multivariate
-from src.utils.config import AppConfig
 from src.utils.logger import get_logger
 from src.utils.paths import (
     RESEARCH_BACKTESTS_DIR,
@@ -41,11 +42,13 @@ def _go():
     return go, make_subplots
 
 
-def _build_regime_transition(app: AppConfig):
+def _build_regime_transition(ctx: ChartContext):
     go, _ = _go()
     if not RISK_REGIMES_PATH.is_file():
         return None
-    reg = pl.read_parquet(RISK_REGIMES_PATH).sort("timestamp")
+    reg = filter_by_date_range(
+        pl.read_parquet(RISK_REGIMES_PATH).sort("timestamp"), "timestamp", ctx.date_range
+    )
     if reg.height < 2:
         return None
     labels = reg["regime_label"].to_list()
@@ -68,52 +71,68 @@ def _build_regime_transition(app: AppConfig):
     return fig
 
 
-def _build_equity(app: AppConfig):
-    go, _ = _go()
+def _build_equity(ctx: ChartContext):
+    go, make_subplots = _go()
+    app = ctx.app
     exp = app.research.meta.experiment_id
     path = RESEARCH_BACKTESTS_DIR / f"experiment_id={exp}" / "equity_curve.parquet"
     if not path.is_file():
         return None
-    eq = pl.read_parquet(path).sort("timestamp")
+    eq = filter_by_date_range(pl.read_parquet(path).sort("timestamp"), "timestamp", ctx.date_range)
     try:
         assert_equity_sane(eq)
     except ValueError as exc:
         LOGGER.warning("Equity validation: %s", exc)
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=eq["timestamp"], y=eq["equity"], name="Equity", mode="lines"))
+    x, y_eq = series_xy(eq, "timestamp", "equity")
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.08,
+        row_heights=[0.65, 0.35],
+        subplot_titles=("Cumulative equity (indexed to 1.0)", "Drawdown"),
+    )
+    fig.add_trace(go.Scatter(x=x, y=y_eq, name="Equity", mode="lines"), row=1, col=1)
+    if "is_rebalance" in eq.columns:
+        reb = eq.filter(pl.col("is_rebalance") == True)  # noqa: E712
+        if reb.height:
+            rx, _ = series_xy(reb, "timestamp", "equity")
+            for rx_i in rx:
+                fig.add_vline(x=rx_i, line_width=1, line_dash="dot", line_color="#94a3b8", row=1, col=1)
     if "drawdown" in eq.columns:
+        _, y_dd = series_xy(eq, "timestamp", "drawdown")
         fig.add_trace(
-            go.Scatter(
-                x=eq["timestamp"],
-                y=eq["drawdown"],
-                name="Drawdown",
-                mode="lines",
-                yaxis="y2",
-                line=dict(dash="dot"),
-            )
+            go.Scatter(x=x, y=y_dd, name="Drawdown", mode="lines", fill="tozeroy"),
+            row=2,
+            col=1,
         )
-        fig.update_layout(
-            yaxis2=dict(title="Drawdown", overlaying="y", side="right", tickformat=".1%"),
-        )
-    fig.update_layout(title="Backtest equity curve", template="plotly_dark")
+        fig.update_yaxes(tickformat=".1%", row=2, col=1)
+    fig.update_layout(title="Backtest equity curve", template="plotly_dark", height=520)
     return fig
 
 
-def _build_rolling_sharpe(app: AppConfig):
+def _build_rolling_sharpe(ctx: ChartContext):
     go, _ = _go()
+    app = ctx.app
     exp = app.research.meta.experiment_id
     path = RESEARCH_BACKTESTS_DIR / f"experiment_id={exp}" / "rolling_metrics.parquet"
     if not path.is_file():
         return None
-    rm = pl.read_parquet(path).sort("timestamp")
+    rm = filter_by_date_range(
+        pl.read_parquet(path).sort("timestamp"), "timestamp", ctx.date_range
+    ).filter(pl.col("rolling_sharpe").is_not_null() & pl.col("rolling_sharpe").is_finite())
+    if not rm.height:
+        return None
+    x, y = series_xy(rm, "timestamp", "rolling_sharpe")
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=rm["timestamp"], y=rm["rolling_sharpe"], name="Rolling Sharpe"))
+    fig.add_trace(go.Scatter(x=x, y=y, name="Rolling Sharpe", mode="lines"))
     fig.update_layout(title="Rolling Sharpe (21d)", template="plotly_dark")
     return fig
 
 
-def _build_mc_fan(app: AppConfig):
+def _build_mc_fan(ctx: ChartContext):
     go, _ = _go()
+    app = ctx.app
     mu, sigma = calibrate_gbm(app)
     paths = sample_paths_for_plot(mu, sigma, app.research.simulation)
     t = np.arange(paths.shape[1])
@@ -124,16 +143,17 @@ def _build_mc_fan(app: AppConfig):
         fig.add_trace(
             go.Scatter(x=t, y=paths[i], mode="lines", line=dict(width=0.5, color="gray"), showlegend=False)
         )
-    fig.add_trace(go.Scatter(x=t, y=p50, name="Median", line=dict(width=2)))
-    fig.add_trace(go.Scatter(x=t, y=p95, name="P95", line=dict(dash="dash")))
-    fig.add_trace(go.Scatter(x=t, y=p5, name="P5", line=dict(dash="dash"), fill="tonexty"))
+    fig.add_trace(go.Scatter(x=t, y=p95, name="P95", line=dict(width=0), fillcolor="rgba(59,130,246,0.2)", fill="none"))
+    fig.add_trace(go.Scatter(x=t, y=p5, name="P5", line=dict(width=0), fillcolor="rgba(59,130,246,0.2)", fill="tonexty"))
+    fig.add_trace(go.Scatter(x=t, y=p50, name="Median", line=dict(width=2, color="#3b82f6")))
     fig.update_layout(title="Monte Carlo fan chart (GBM)", template="plotly_dark", xaxis_title="Step")
     return fig
 
 
 def _build_mc_hist(sim_type: str):
-    def _inner(app: AppConfig):
+    def _inner(ctx: ChartContext):
         go, make_subplots = _go()
+        app = ctx.app
         exp = app.research.meta.experiment_id
         p = (
             RESEARCH_SIMULATIONS_DIR
@@ -157,16 +177,19 @@ def _build_mc_hist(sim_type: str):
             fig.update_layout(title="Regime GBM — terminal returns by regime", template="plotly_dark")
             return fig
         fig = make_subplots(rows=1, cols=2, subplot_titles=("Terminal return", "Max drawdown"))
-        fig.add_trace(go.Histogram(x=df["terminal_return"], name="terminal"), row=1, col=1)
-        fig.add_trace(go.Histogram(x=df["max_drawdown"], name="drawdown"), row=1, col=2)
+        fig.add_trace(
+            go.Histogram(x=df["terminal_return"], name="terminal", nbinsx=40), row=1, col=1
+        )
+        fig.add_trace(go.Histogram(x=df["max_drawdown"], name="drawdown", nbinsx=40), row=1, col=2)
         fig.update_layout(title=f"Simulation — {sim_type}", template="plotly_dark")
         return fig
 
     return _inner
 
 
-def _build_stress(app: AppConfig):
+def _build_stress(ctx: ChartContext):
     go, _ = _go()
+    app = ctx.app
     exp = app.research.meta.experiment_id
     path = RESEARCH_STRESS_DIR / f"experiment_id={exp}" / "stress_metrics.parquet"
     if not path.is_file():
@@ -174,12 +197,13 @@ def _build_stress(app: AppConfig):
     stress = pl.read_parquet(path).sort("scenario")
     fig = go.Figure()
     fig.add_trace(go.Bar(x=stress["scenario"], y=stress["var"], name="VaR"))
-    fig.update_layout(title="Stress VaR by scenario", template="plotly_dark")
+    fig.update_layout(title="Stress VaR by scenario", template="plotly_dark", yaxis_tickformat=".1%")
     return fig
 
 
-def _build_scenario(app: AppConfig):
+def _build_scenario(ctx: ChartContext):
     go, _ = _go()
+    app = ctx.app
     exp = app.research.meta.experiment_id
     path = RESEARCH_SCENARIOS_DIR / f"experiment_id={exp}" / "scenario_comparison.parquet"
     if not path.is_file():
@@ -188,11 +212,13 @@ def _build_scenario(app: AppConfig):
     fig = go.Figure()
     fig.add_trace(go.Bar(x=scen["scenario"], y=scen["var"], name="VaR"))
     fig.add_trace(go.Bar(x=scen["scenario"], y=scen["cvar"], name="CVaR"))
-    fig.update_layout(title="Scenario comparison", template="plotly_dark", barmode="group")
+    fig.update_layout(
+        title="Scenario comparison", template="plotly_dark", barmode="group", yaxis_tickformat=".1%"
+    )
     return fig
 
 
-def _build_frontier(_app: AppConfig):
+def _build_frontier(_ctx: ChartContext):
     go, _ = _go()
     if not RISK_FRONTIER_PATH.is_file():
         return None
@@ -205,12 +231,16 @@ def _build_frontier(_app: AppConfig):
     return fig
 
 
-def _build_vol(_app: AppConfig):
+def _build_vol(ctx: ChartContext):
     go, _ = _go()
     vol_glob = list(RISK_VOLATILITY_DIR.glob("year=*/month=*/*.parquet"))
     if not vol_glob:
         return None
-    vol = pl.scan_parquet(vol_glob).filter(pl.col("scope") == "portfolio").collect()
+    vol = filter_by_date_range(
+        pl.scan_parquet(vol_glob).filter(pl.col("scope") == "portfolio").collect().sort("timestamp"),
+        "timestamp",
+        ctx.date_range,
+    )
     if not vol.height:
         return None
     fig = go.Figure()
@@ -220,18 +250,22 @@ def _build_vol(_app: AppConfig):
     return fig
 
 
-def _build_risk_drawdown(_app: AppConfig):
+def _build_risk_drawdown(ctx: ChartContext):
     go, _ = _go()
     if not RISK_PORTFOLIO_METRICS_PATH.is_file():
         return None
-    pm = pl.read_parquet(RISK_PORTFOLIO_METRICS_PATH)
+    pm = filter_by_date_range(
+        pl.read_parquet(RISK_PORTFOLIO_METRICS_PATH).sort("timestamp"),
+        "timestamp",
+        ctx.date_range,
+    )
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=pm["timestamp"], y=pm["drawdown"], fill="tozeroy"))
     fig.update_layout(title="Historical portfolio drawdown", template="plotly_dark")
     return fig
 
 
-def _build_var(_app: AppConfig):
+def _build_var(_ctx: ChartContext):
     go, _ = _go()
     var_path = RISK_VAR_DIR / "var_metrics.parquet"
     if not var_path.is_file():
@@ -244,11 +278,11 @@ def _build_var(_app: AppConfig):
             y=var_df["var"],
         )
     )
-    fig.update_layout(title="VaR by method", template="plotly_dark")
+    fig.update_layout(title="VaR by method", template="plotly_dark", yaxis_tickformat=".1%")
     return fig
 
 
-def _build_corr(_app: AppConfig):
+def _build_corr(_ctx: ChartContext):
     go, _ = _go()
     corr_path = RISK_CORRELATIONS_DIR / "correlations_latest.parquet"
     if not corr_path.is_file():
@@ -278,6 +312,7 @@ def build_chart_registry() -> list[ChartSpec]:
             "Backtest",
             _build_equity,
             "equity_curve.html",
+            date_filterable=True,
         ),
         ChartSpec(
             "rolling_sharpe",
@@ -286,6 +321,7 @@ def build_chart_registry() -> list[ChartSpec]:
             "Backtest",
             _build_rolling_sharpe,
             "rolling_sharpe.html",
+            date_filterable=True,
         ),
         ChartSpec(
             "mc_fan_gbm",
@@ -327,6 +363,7 @@ def build_chart_registry() -> list[ChartSpec]:
             "Simulation",
             _build_regime_transition,
             "regime_transitions.html",
+            date_filterable=True,
         ),
         ChartSpec(
             "stress_dashboard",
@@ -359,6 +396,7 @@ def build_chart_registry() -> list[ChartSpec]:
             "Risk",
             _build_vol,
             "rolling_volatility.html",
+            date_filterable=True,
         ),
         ChartSpec(
             "drawdown",
@@ -367,6 +405,7 @@ def build_chart_registry() -> list[ChartSpec]:
             "Risk",
             _build_risk_drawdown,
             "drawdown.html",
+            date_filterable=True,
         ),
         ChartSpec(
             "var_distribution",
@@ -389,15 +428,18 @@ def build_chart_registry() -> list[ChartSpec]:
 
 def write_standalone_charts(
     registry: list[ChartSpec],
-    app: AppConfig,
+    app,
     research_dir: Path,
     risk_dir: Path,
+    *,
+    date_range=None,
 ) -> dict[str, object]:
     """Write per-chart HTML files; return built figures for dashboard."""
+    ctx = ChartContext(app=app, date_range=date_range)
     figures: dict[str, object] = {}
     for spec in registry:
         try:
-            fig = spec.builder(app)
+            fig = spec.builder(ctx)
         except Exception as exc:
             LOGGER.warning("Chart %s failed: %s", spec.id, exc)
             continue

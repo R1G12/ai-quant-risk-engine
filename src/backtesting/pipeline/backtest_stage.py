@@ -6,6 +6,7 @@ import polars as pl
 
 from src.backtesting.engine.walk_forward import run_historical_backtest
 from src.backtesting.metrics.performance import max_drawdown, sharpe_ratio
+from src.features.wide_returns import load_returns_wide
 from src.risk.portfolio.holdings import load_weights
 from src.utils.config import load_app_config
 from src.utils.experiment import log_research_metrics
@@ -15,7 +16,6 @@ from src.utils.paths import (
     EXPERIMENTS_BACKTESTS_DIR,
     METRICS_DIR,
     RESEARCH_BACKTESTS_DIR,
-    RISK_DATASET_PATH,
     RISK_OPT_WEIGHTS_PATH,
     ensure_dir,
 )
@@ -40,23 +40,7 @@ def run() -> None:
     weights = _load_weights(app)
     tickers = list(weights.keys())
 
-    long = (
-        pl.scan_parquet(RISK_DATASET_PATH)
-        .filter(pl.col("ticker").is_in(tickers))
-        .filter(pl.col("returns").is_not_null())
-        .select("timestamp", "ticker", "returns")
-        .collect()
-    )
-    wide = (
-        long.pivot(on="ticker", index="timestamp", values="returns")
-        .sort("timestamp")
-        .unique(subset=["timestamp"], keep="last")
-    )
-    ticker_cols = [t for t in weights if t in wide.columns]
-    if ticker_cols:
-        wide = wide.filter(
-            pl.any_horizontal([pl.col(t).is_not_null() for t in ticker_cols])
-        )
+    wide = load_returns_wide(tickers)
 
     dupes = wide.group_by("timestamp").len().filter(pl.col("len") > 1)
     if dupes.height:

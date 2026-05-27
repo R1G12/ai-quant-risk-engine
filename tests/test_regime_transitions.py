@@ -2,13 +2,14 @@
 
 import numpy as np
 
+from src.analytics.charts.context import ChartContext
 from src.analytics.charts.registry import _build_regime_transition
 from src.utils.config import load_app_config
 
 
 def test_regime_transition_matrix_rows_sum_to_one() -> None:
     app = load_app_config()
-    fig = _build_regime_transition(app)
+    fig = _build_regime_transition(ChartContext(app=app))
     if fig is None:
         return
     z = fig.data[0].z

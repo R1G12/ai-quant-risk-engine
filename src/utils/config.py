@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +38,8 @@ class MarketConfig:
     tickers: list[str] = field(default_factory=lambda: ["AAPL", "MSFT"])
     start_date: str = "2024-01-01"
     end_date: str = "2024-03-31"
+    use_rolling_window: bool = True
+    rolling_days: int = 365
     partition_freq: str = "month"
     compression: str = "zstd"
     default_sentiment_ticker: str = "MARKET"
@@ -190,6 +193,28 @@ def load_config() -> Config:
     return load_app_config().finbert
 
 
+def resolve_market_dates(
+    merged_market: dict[str, Any],
+    *,
+    today: date | None = None,
+) -> tuple[str, str]:
+    """Resolve start/end dates; rolling 1Y window when enabled and not pinned."""
+    use_rolling = bool(merged_market.get("use_rolling_window", True))
+    rolling_days = int(merged_market.get("rolling_days", 365))
+    pinned_start = merged_market.get("start_date")
+    pinned_end = merged_market.get("end_date")
+
+    if use_rolling and not os.getenv("MARKET_PIN_DATES"):
+        end = today or date.today()
+        start = end - timedelta(days=rolling_days)
+        return start.isoformat(), end.isoformat()
+
+    return (
+        str(pinned_start or (date.today() - timedelta(days=rolling_days)).isoformat()),
+        str(pinned_end or date.today().isoformat()),
+    )
+
+
 def _merge_dicts(*dicts: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for d in dicts:
@@ -248,11 +273,14 @@ def load_app_config() -> AppConfig:
         ),
     )
 
+    start_date, end_date = resolve_market_dates(merged_market)
     market = MarketConfig(
         source=str(source),
         tickers=list(merged_market.get("tickers", ["AAPL", "MSFT"])),
-        start_date=str(merged_market.get("start_date", "2024-01-01")),
-        end_date=str(merged_market.get("end_date", "2024-03-31")),
+        start_date=start_date,
+        end_date=end_date,
+        use_rolling_window=bool(merged_market.get("use_rolling_window", True)),
+        rolling_days=int(merged_market.get("rolling_days", 365)),
         partition_freq=str(merged_market.get("partition_freq", "month")),
         compression=str(merged_market.get("compression", "zstd")),
         default_sentiment_ticker=str(

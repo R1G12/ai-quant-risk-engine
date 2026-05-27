@@ -337,6 +337,25 @@ stages:
     - data/research/reports/
     - metrics/research_reports/
 
+  generate_platform_reports:
+    cmd: python -m src.platform.pipeline.report_stage
+    deps:
+    - data/features/merged/
+    - data/risk/
+    - data/research/backtests/
+    - data/research/reports/
+    - src/platform/
+    - src/copilot/
+    - src/monitoring/
+    - configs/platform.yaml
+    params:
+    - research.meta.experiment_id
+    outs:
+    - reports/portfolio/
+    - reports/risk/
+    - reports/governance/
+    - metrics/platform/
+
 metrics:
 - metrics/sentiment/metrics.json
 - metrics/market_ingest/metrics.json
@@ -344,30 +363,14 @@ metrics:
 - metrics/features_merge/metrics.json
 - metrics/research_simulations/metrics.json
 - metrics/research_backtests/metrics.json
-- metrics/research_simulations/metrics.json
-- metrics/research_backtests/metrics.json
 - metrics/research_stress/metrics.json
 - metrics/research_scenarios/metrics.json
 - metrics/research_evaluation/metrics.json
 - metrics/research_compare/metrics.json
 - metrics/research_reports/metrics.json
-- metrics/research_simulations/metrics.json
-- metrics/research_stress/metrics.json
-- metrics/research_evaluation/metrics.json
-- metrics/research_reports/metrics.json
-- metrics/research_simulations/metrics.json
-- metrics/research_simulations/metrics.json
-- metrics/research_backtests/metrics.json
-- metrics/research_stress/metrics.json
-- metrics/research_scenarios/metrics.json
-- metrics/research_evaluation/metrics.json
-- metrics/research_reports/metrics.json
+- metrics/platform/metrics.json
 plots:
 - metrics/sentiment/plots/metrics:
-    x: step
-- metrics/research_simulations/plots/metrics:
-    x: step
-- metrics/research_backtests/plots/metrics:
     x: step
 - metrics/research_simulations/plots/metrics:
     x: step
@@ -380,28 +383,6 @@ plots:
 - metrics/research_evaluation/plots/metrics:
     x: step
 - metrics/research_compare/plots/metrics:
-    x: step
-- metrics/research_reports/plots/metrics:
-    x: step
-- metrics/research_simulations/plots/metrics:
-    x: step
-- metrics/research_stress/plots/metrics:
-    x: step
-- metrics/research_evaluation/plots/metrics:
-    x: step
-- metrics/research_reports/plots/metrics:
-    x: step
-- metrics/research_simulations/plots/metrics:
-    x: step
-- metrics/research_simulations/plots/metrics:
-    x: step
-- metrics/research_backtests/plots/metrics:
-    x: step
-- metrics/research_stress/plots/metrics:
-    x: step
-- metrics/research_scenarios/plots/metrics:
-    x: step
-- metrics/research_evaluation/plots/metrics:
     x: step
 - metrics/research_reports/plots/metrics:
     x: step

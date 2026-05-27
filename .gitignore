@@ -1,7 +1,9 @@
 .venv/
 .venv312/
 __pycache__/
+**/__pycache__/
 *.py[cod]
+*.pyc
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
@@ -11,6 +13,7 @@ __pycache__/
 .env.local
 
 logs/
+logs/**/*.log
 .dvc/cache/
 .dvc/tmp/
 
@@ -21,10 +24,12 @@ data/features/
 data/risk/
 data/analytics/
 data/research/
+data/cache/
 data/raw/portfolio/
 experiments/
 models/
-reports/
+reports/*
+!reports/.gitkeep
 metrics/market_ingest/
 metrics/market_clean/
 metrics/features_*/

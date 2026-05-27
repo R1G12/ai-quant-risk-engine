@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import polars as pl
 
+from src.features.wide_returns import load_returns_wide
 from src.risk.correlations.covariance import (
     covariance_to_long,
     ledoit_wolf_shrinkage,
@@ -15,7 +16,7 @@ from src.risk.portfolio.holdings import load_weights
 from src.utils.config import load_app_config
 from src.utils.logger import get_logger
 from src.utils.metrics import log_stage_metrics
-from src.utils.paths import METRICS_DIR, RISK_CORRELATIONS_DIR, RISK_DATASET_PATH, ensure_dir
+from src.utils.paths import METRICS_DIR, RISK_CORRELATIONS_DIR, ensure_dir
 
 LOGGER = get_logger(__name__)
 
@@ -26,14 +27,7 @@ def run() -> None:
     tickers = list(load_weights(app).keys())
     window = app.features.correlation_window
 
-    long = (
-        pl.scan_parquet(RISK_DATASET_PATH)
-        .filter(pl.col("ticker").is_in(tickers))
-        .filter(pl.col("returns").is_not_null())
-        .select("timestamp", "ticker", "returns")
-        .collect()
-    )
-    wide = long.pivot(on="ticker", index="timestamp", values="returns").sort("timestamp")
+    wide = load_returns_wide(tickers)
 
     cov = sample_covariance_matrix(wide, tickers)
     if app.risk.optimization.shrinkage == "ledoit_wolf":

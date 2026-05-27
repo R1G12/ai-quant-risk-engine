@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from src.utils.config import AppConfig
+from src.analytics.charts.context import ChartContext
 
 
 @dataclass
@@ -16,5 +16,6 @@ class ChartSpec:
     title: str
     description: str
     group: str
-    builder: Callable[[AppConfig], object | None]
+    builder: Callable[[ChartContext], object | None]
     standalone_name: str | None = None
+    date_filterable: bool = False
