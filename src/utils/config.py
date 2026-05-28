@@ -110,6 +110,9 @@ class OptimizationRiskConfig:
     frontier_points: int = 25
     min_weight: float = 0.0
     use_sentiment_adjustment: bool = True
+    allow_shorts: bool = False
+    max_gross_per_ticker: float = 0.5
+    weighting: str = "equal"
 
 
 @dataclass
@@ -177,6 +180,42 @@ class ResearchConfig:
 
 
 @dataclass
+class PortfolioRunConfig:
+    """Notebook-style portfolio options from configs/run.yaml."""
+
+    weighting: str = "equal"
+    allow_shorts: bool = True
+    max_gross_per_ticker: float = 0.5
+    position_sides: dict[str, str] = field(default_factory=dict)
+    manual_weights: dict[str, float] = field(default_factory=dict)
+    anchor_weights: dict[str, float] = field(default_factory=dict)
+    risk_free: float = 0.05
+
+
+@dataclass
+class RunMarketOverrides:
+    tickers: list[str] = field(default_factory=list)
+    use_rolling_window: bool | None = None
+    rolling_days: int | None = None
+
+
+@dataclass
+class RunResearchOverrides:
+    backtest_weight_source: str = "max_sharpe"
+
+
+@dataclass
+class RunConfig:
+    """User-facing run profile (configs/run.yaml)."""
+
+    mode: str = "demo"
+    profile_path: Path | None = None
+    market: RunMarketOverrides = field(default_factory=RunMarketOverrides)
+    portfolio: PortfolioRunConfig = field(default_factory=PortfolioRunConfig)
+    research: RunResearchOverrides = field(default_factory=RunResearchOverrides)
+
+
+@dataclass
 class AppConfig:
     """Full application configuration."""
 
@@ -186,6 +225,7 @@ class AppConfig:
     sentiment_map: dict[str, Any]
     risk: RiskConfig
     research: ResearchConfig
+    run: RunConfig | None = None
 
 
 def load_config() -> Config:
@@ -222,7 +262,100 @@ def _merge_dicts(*dicts: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def load_app_config() -> AppConfig:
+def _default_run_profile_path() -> Path:
+    env_path = os.getenv("RUN_PROFILE")
+    if env_path:
+        return Path(env_path)
+    return CONFIGS_DIR / "run.yaml"
+
+
+def load_run_config(path: Path | None = None) -> RunConfig | None:
+    """Load configs/run.yaml (or RUN_PROFILE path). Returns None if file missing."""
+    profile_path = path or _default_run_profile_path()
+    if not profile_path.is_file():
+        return None
+    raw = _load_yaml(profile_path)
+    market_raw = raw.get("market", {}) or {}
+    port_raw = raw.get("portfolio", {}) or {}
+    research_raw = raw.get("research", {}) or {}
+    position_sides = {str(k): str(v) for k, v in (port_raw.get("position_sides") or {}).items()}
+    return RunConfig(
+        mode=str(raw.get("mode", "demo")).lower(),
+        profile_path=profile_path.resolve(),
+        market=RunMarketOverrides(
+            tickers=[str(t) for t in market_raw.get("tickers", [])],
+            use_rolling_window=market_raw.get("use_rolling_window"),
+            rolling_days=market_raw.get("rolling_days"),
+        ),
+        portfolio=PortfolioRunConfig(
+            weighting=str(port_raw.get("weighting", "equal")),
+            allow_shorts=bool(port_raw.get("allow_shorts", True)),
+            max_gross_per_ticker=float(port_raw.get("max_gross_per_ticker", 0.5)),
+            position_sides=position_sides,
+            manual_weights={str(k): float(v) for k, v in (port_raw.get("manual_weights") or {}).items()},
+            anchor_weights={str(k): float(v) for k, v in (port_raw.get("anchor_weights") or {}).items()},
+            risk_free=float(port_raw.get("risk_free", 0.05)),
+        ),
+        research=RunResearchOverrides(
+            backtest_weight_source=str(research_raw.get("backtest_weight_source", "max_sharpe")),
+        ),
+    )
+
+
+def market_source_for_run_mode(mode: str) -> str:
+    """Map run profile mode to market adapter source."""
+    return "yfinance" if mode == "live" else "sample"
+
+
+def apply_run_profile_env(run: RunConfig, *, force: bool = False) -> dict[str, str]:
+    """Apply run-profile env vars to ``os.environ`` (returns the updates)."""
+    env = run_profile_env(run, force=force)
+    os.environ.update(env)
+    return env
+
+
+def run_profile_env(run: RunConfig, *, force: bool = False) -> dict[str, str]:
+    """Environment overrides derived from run.mode.
+
+    When ``force`` is True (``aqre run profile``), always set sources from the
+    run profile so a leftover ``MARKET_SOURCE=sample`` in the shell cannot
+    desync market data from ``configs/run.yaml`` tickers.
+    """
+    env: dict[str, str] = {}
+    if force or not os.getenv("MARKET_SOURCE"):
+        env["MARKET_SOURCE"] = market_source_for_run_mode(run.mode)
+    if force or not os.getenv("NEWS_SOURCE"):
+        env["NEWS_SOURCE"] = "sample"
+    return env
+
+
+def _apply_run_to_merged(
+    run: RunConfig,
+    merged_market: dict[str, Any],
+    merged_features: dict[str, Any],
+    merged_risk_port: dict[str, Any],
+    merged_risk_opt: dict[str, Any],
+    merged_bt: dict[str, Any],
+) -> None:
+    if run.market.tickers:
+        merged_market["tickers"] = run.market.tickers
+    if run.market.use_rolling_window is not None:
+        merged_market["use_rolling_window"] = run.market.use_rolling_window
+    if run.market.rolling_days is not None:
+        merged_market["rolling_days"] = run.market.rolling_days
+    if not os.getenv("MARKET_SOURCE"):
+        merged_market["source"] = market_source_for_run_mode(run.mode)
+    merged_features["risk_free_rate"] = run.portfolio.risk_free
+    merged_risk_port["weight_mode"] = run.portfolio.weighting
+    merged_risk_opt["long_only"] = not run.portfolio.allow_shorts
+    merged_risk_opt["max_weight"] = run.portfolio.max_gross_per_ticker
+    merged_risk_opt["allow_shorts"] = run.portfolio.allow_shorts
+    merged_risk_opt["max_gross_per_ticker"] = run.portfolio.max_gross_per_ticker
+    merged_risk_opt["weighting"] = run.portfolio.weighting
+    merged_bt["weight_source"] = run.research.backtest_weight_source
+
+
+def load_app_config(run_profile: Path | None = None) -> AppConfig:
     """Load merged configuration for all pipeline stages."""
     base_cfg = _load_yaml(CONFIGS_DIR / "base.yaml")
     dvc_cfg = _load_yaml(CONFIGS_DIR / "dvc_params.yaml")
@@ -259,6 +392,12 @@ def load_app_config() -> AppConfig:
     merged_risk_var = _merge_dicts(risk_var_cfg, risk_params.get("var", {}))
     merged_risk_port = _merge_dicts(risk_port_cfg, risk_params.get("portfolio", {}))
     merged_risk_opt = _merge_dicts(risk_opt_cfg, risk_params.get("optimization", {}))
+
+    run = load_run_config(run_profile)
+    if run is not None:
+        _apply_run_to_merged(
+            run, merged_market, merged_features, merged_risk_port, merged_risk_opt, merged_bt
+        )
 
     source = os.getenv("MARKET_SOURCE", merged_market.get("source", "sample"))
 
@@ -334,6 +473,9 @@ def load_app_config() -> AppConfig:
             frontier_points=int(merged_risk_opt.get("frontier_points", 25)),
             min_weight=float(merged_risk_opt.get("min_weight", 0.0)),
             use_sentiment_adjustment=bool(merged_risk_opt.get("use_sentiment_adjustment", True)),
+            allow_shorts=bool(merged_risk_opt.get("allow_shorts", False)),
+            max_gross_per_ticker=float(merged_risk_opt.get("max_gross_per_ticker", 0.5)),
+            weighting=str(merged_risk_opt.get("weighting", "equal")),
         ),
         hmm_n_regimes=int(risk_params.get("hmm_n_regimes", 3)),
         hmm_n_iter=int(risk_params.get("hmm_n_iter", 200)),
@@ -375,4 +517,5 @@ def load_app_config() -> AppConfig:
         sentiment_map=sentiment_map,
         risk=risk,
         research=research,
+        run=run,
     )

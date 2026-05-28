@@ -10,6 +10,11 @@ import polars as pl
 from src.features.wide_returns import load_returns_wide
 from src.risk.correlations.covariance import ledoit_wolf_shrinkage, sample_covariance_matrix
 from src.risk.optimization.constraints import PortfolioConstraints
+from src.portfolio.weights import (
+    optimize_max_sharpe_gross,
+    optimize_partial_weights,
+    resolve_weights,
+)
 from src.risk.optimization.markowitz import max_sharpe_weights, min_variance_weights, portfolio_stats
 from src.risk.pipeline._io import write_single_parquet
 from src.risk.portfolio.holdings import load_weights
@@ -54,6 +59,68 @@ def _mean_returns_with_sentiment(app, tickers: list[str]) -> np.ndarray:
     return np.array(mus)
 
 
+def _run_portfolio_kw(app) -> dict:
+    opt = app.risk.optimization
+    if app.run is not None:
+        p = app.run.portfolio
+        return {
+            "allow_shorts": p.allow_shorts,
+            "max_gross_per_ticker": p.max_gross_per_ticker,
+            "position_sides": p.position_sides or None,
+            "manual_weights": p.manual_weights or None,
+            "anchor_weights": p.anchor_weights or None,
+            "risk_free": p.risk_free,
+        }
+    return {
+        "allow_shorts": opt.allow_shorts,
+        "max_gross_per_ticker": opt.max_gross_per_ticker,
+        "position_sides": None,
+        "manual_weights": None,
+        "anchor_weights": None,
+        "risk_free": app.features.risk_free_rate,
+    }
+
+
+def _max_sharpe_weights(
+    app,
+    tickers: list[str],
+    mean_r: np.ndarray,
+    cov: np.ndarray,
+    cons: PortfolioConstraints,
+) -> tuple[np.ndarray, bool]:
+    opt = app.risk.optimization
+    weighting = opt.weighting
+    kw = _run_portfolio_kw(app)
+
+    if weighting == "optimised":
+        return optimize_max_sharpe_gross(
+            mean_r,
+            cov,
+            risk_free=kw["risk_free"],
+            allow_shorts=kw["allow_shorts"],
+            max_gross_per_ticker=kw["max_gross_per_ticker"],
+        )
+
+    if weighting == "partial":
+        return optimize_partial_weights(
+            mean_r,
+            cov,
+            tickers,
+            kw["anchor_weights"] or {},
+            risk_free=kw["risk_free"],
+            allow_shorts=kw["allow_shorts"],
+            max_gross_per_ticker=kw["max_gross_per_ticker"],
+            position_sides=kw["position_sides"],
+        )
+
+    if weighting in ("equal", "manual"):
+        w = resolve_weights(weighting, tickers, **kw)
+        return w, True
+
+    w, converged = max_sharpe_weights(mean_r, cov, cons, risk_free=app.features.risk_free_rate)
+    return w, converged
+
+
 def run() -> None:
     app = load_app_config()
     ensure_dir(RISK_OPTIMIZATION_DIR)
@@ -76,9 +143,7 @@ def run() -> None:
     )
 
     w_min = min_variance_weights(cov, cons, len(tickers))
-    w_sharpe, converged = max_sharpe_weights(
-        mean_r, cov, cons, risk_free=app.features.risk_free_rate
-    )
+    w_sharpe, converged = _max_sharpe_weights(app, tickers, mean_r, cov, cons)
 
     weight_rows = []
     stat_rows = []
@@ -104,6 +169,7 @@ def run() -> None:
         "converged": converged,
         "shrinkage": opt_cfg.shrinkage,
         "tickers": tickers,
+        "weighting": opt_cfg.weighting,
     }
     RISK_OPT_METADATA_PATH.parent.mkdir(parents=True, exist_ok=True)
     with RISK_OPT_METADATA_PATH.open("w", encoding="utf-8") as f:

@@ -31,10 +31,15 @@ def run() -> None:
     mean_r = _mean_returns_with_sentiment(app, tickers)
 
     opt = app.risk.optimization
+    long_only = opt.long_only
+    max_w = opt.max_weight
+    if app.run is not None and app.run.portfolio.allow_shorts:
+        long_only = False
+        max_w = min(max_w, app.run.portfolio.max_gross_per_ticker)
     cons = PortfolioConstraints(
-        long_only=opt.long_only,
+        long_only=long_only,
         min_weight=opt.min_weight,
-        max_weight=opt.max_weight,
+        max_weight=max_w,
         leverage_cap=opt.leverage_cap,
     )
     frontier = efficient_frontier(mean_r, cov, cons, n_points=opt.frontier_points)

@@ -9,6 +9,7 @@ from src.risk.correlations.covariance import (
     covariance_to_long,
     ledoit_wolf_shrinkage,
     sample_covariance_matrix,
+    tickers_in_wide,
 )
 from src.risk.correlations.rolling_corr import rolling_pairwise_corr_at_date
 from src.risk.pipeline._io import write_single_parquet
@@ -24,10 +25,18 @@ LOGGER = get_logger(__name__)
 def run() -> None:
     app = load_app_config()
     ensure_dir(RISK_CORRELATIONS_DIR)
-    tickers = list(load_weights(app).keys())
+    holdings_tickers = list(load_weights(app).keys())
     window = app.features.correlation_window
 
-    wide = load_returns_wide(tickers)
+    wide = load_returns_wide(holdings_tickers)
+    tickers = tickers_in_wide(wide, holdings_tickers)
+    if len(tickers) < 2:
+        raise ValueError(
+            f"Holdings list {len(holdings_tickers)} tickers but only {len(tickers)} "
+            f"have returns in the risk dataset ({tickers}). "
+            "Run `aqre prepare` then `aqre run profile` (or `dvc repro -f ingest_market_data`) "
+            "so market ingest matches configs/run.yaml."
+        )
 
     cov = sample_covariance_matrix(wide, tickers)
     if app.risk.optimization.shrinkage == "ledoit_wolf":

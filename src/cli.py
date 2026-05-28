@@ -9,7 +9,7 @@ from pathlib import Path
 
 import typer
 
-from src.utils.config import load_app_config
+from src.utils.config import apply_run_profile_env, load_app_config, load_run_config, run_profile_env
 
 app = typer.Typer(
     name="aqre",
@@ -67,9 +67,11 @@ app.add_typer(config_app, name="config")
 
 
 @config_app.command("show")
-def config_show() -> None:
+def config_show(
+    profile: str | None = typer.Option(None, "--profile", help="Path to configs/run.yaml"),
+) -> None:
     """Print resolved configuration (tickers, dates, experiment id)."""
-    cfg = load_app_config()
+    cfg = load_app_config(Path(profile) if profile else None)
     typer.echo(f"experiment_id:     {cfg.research.meta.experiment_id}")
     typer.echo(f"market.source:     {cfg.market.source}")
     typer.echo(f"market.tickers:    {', '.join(cfg.market.tickers)}")
@@ -81,10 +83,90 @@ def config_show() -> None:
 
         news_source = get_news_source()
     typer.echo(f"ingestion.source:  {news_source}")
+    if cfg.run is not None:
+        typer.echo(f"run.mode:          {cfg.run.mode}")
+        typer.echo(f"run.profile:       {cfg.run.profile_path}")
+        typer.echo(f"run.weighting:     {cfg.run.portfolio.weighting}")
+        typer.echo(f"run.allow_shorts:  {cfg.run.portfolio.allow_shorts}")
+        typer.echo(f"run.anchors:       {cfg.run.portfolio.anchor_weights}")
 
 
 run_app = typer.Typer(help="Run DVC stage bundles.")
 app.add_typer(run_app, name="run")
+
+
+def _profile_path_option(profile: str | None) -> Path | None:
+    return Path(profile) if profile else None
+
+
+@run_app.command("profile")
+def run_profile(
+    profile: str | None = typer.Option(None, "--profile", help="Path to configs/run.yaml"),
+    skip_repro: bool = typer.Option(False, "--skip-repro", help="Skip dvc repro"),
+    pin_dates: bool = typer.Option(False, "--pin-dates", help="Set MARKET_PIN_DATES=1"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Print commands only"),
+    dashboard: bool = typer.Option(False, "--dashboard", help="Launch dashboard after pipeline"),
+    legacy: bool = typer.Option(False, "--legacy", help="Use legacy Phase 4 dashboard"),
+) -> None:
+    """Prepare run profile, run full pipeline, optionally launch dashboard."""
+    profile_path = _profile_path_option(profile)
+    run_cfg = load_run_config(profile_path)
+    if run_cfg is None:
+        typer.echo("Run profile not found. Create configs/run.yaml or pass --profile.", err=True)
+        raise typer.Exit(1)
+    env = run_profile_env(run_cfg, force=True)
+    if not dry_run:
+        from src.portfolio.prepare import materialize_run
+
+        apply_run_profile_env(run_cfg, force=True)
+        app = load_app_config(profile_path)
+        holdings = materialize_run(app)
+        typer.echo(f"Prepared holdings: {holdings}")
+    if pin_dates:
+        env["MARKET_PIN_DATES"] = "1"
+    if not skip_repro:
+        cmd = ["dvc", "repro"]
+        typer.echo(" ".join(cmd))
+        if not dry_run:
+            result = subprocess.run(cmd, cwd=PROJECT_ROOT, env={**os.environ, **env}, check=False)
+            if result.returncode != 0:
+                raise typer.Exit(result.returncode)
+    if dashboard and not dry_run:
+        dash_args = ["dashboard", "--legacy"] if legacy else ["dashboard"]
+        raise typer.Exit(
+            subprocess.run(
+                [sys.executable, "-m", "src.cli", *dash_args],
+                cwd=PROJECT_ROOT,
+                check=False,
+            ).returncode
+        )
+
+
+@app.command("prepare")
+def prepare_cmd(
+    profile: str | None = typer.Option(None, "--profile", help="Path to configs/run.yaml"),
+) -> None:
+    """Materialize holdings and run manifest from configs/run.yaml."""
+    from src.portfolio.prepare import materialize_run
+
+    profile_path = _profile_path_option(profile)
+    run_cfg = load_run_config(profile_path)
+    if run_cfg is None:
+        typer.echo("Run profile not found. Create configs/run.yaml or pass --profile.", err=True)
+        raise typer.Exit(1)
+    apply_run_profile_env(run_cfg, force=True)
+    app = load_app_config(profile_path)
+    path = materialize_run(app)
+    typer.echo(f"Holdings written: {path}")
+    manifest_path = PROJECT_ROOT / "data" / "run_manifest.json"
+    typer.echo(f"Manifest: {manifest_path}")
+    if manifest_path.is_file():
+        import json
+
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        skipped = manifest.get("skipped_tickers") or []
+        if skipped:
+            typer.echo(f"Skipped {len(skipped)} unavailable ticker(s): {', '.join(skipped)}")
 
 
 @run_app.command("all")

@@ -200,6 +200,20 @@ def load_yfinance_market(cfg: MarketConfig, *, prefer_period: bool = False) -> p
     if not frames:
         raise ValueError(_YFINANCE_ERROR_HINT)
 
+    ingested = {t for f in frames for t in f["ticker"].unique().to_list()}
+    missing = [t for t in cfg.tickers if t not in ingested]
+    if missing:
+        LOGGER.warning(
+            "yfinance returned no rows for %d ticker(s): %s",
+            len(missing),
+            missing,
+        )
+    if len(ingested) < 2:
+        raise ValueError(
+            f"yfinance ingest: need at least 2 tickers with data, got {len(ingested)} "
+            f"({sorted(ingested)}). Missing: {missing}"
+        )
+
     df = pl.concat(frames, how="vertical_relaxed")
     for src, dst in [("open", "open"), ("high", "high"), ("low", "low"), ("close", "close"), ("volume", "volume")]:
         if src in df.columns and src != dst:
@@ -215,24 +229,22 @@ def load_yfinance_market(cfg: MarketConfig, *, prefer_period: bool = False) -> p
     return df.select([c for c in select_cols if c in df.columns]).lazy()
 
 
+def _pandas_ohlcv_to_polars(part, ticker: str) -> pl.DataFrame:
+    part = part.reset_index()
+    part.columns = [str(c).lower() for c in part.columns]
+    part = part.rename(columns={"date": "timestamp", "adj close": "adj_close"})
+    return pl.from_pandas(part).with_columns(pl.lit(ticker).alias("ticker"))
+
+
 def _parse_yfinance_frames(pdf, tickers: list[str]) -> list[pl.DataFrame]:
     if pdf is None or pdf.empty:
         return []
     frames: list[pl.DataFrame] = []
     if len(tickers) == 1:
-        ticker = tickers[0]
-        part = pdf.reset_index()
-        part.columns = [str(c).lower() for c in part.columns]
-        part = part.rename(columns={"date": "timestamp", "adj close": "adj_close"})
-        part = part.with_columns(pl.lit(ticker).alias("ticker"))
-        frames.append(pl.from_pandas(part))
+        frames.append(_pandas_ohlcv_to_polars(pdf, tickers[0]))
         return frames
     for ticker in tickers:
         if not hasattr(pdf.columns, "get_level_values") or ticker not in pdf.columns.get_level_values(0):
             continue
-        part = pdf[ticker].reset_index()
-        part.columns = [str(c).lower() for c in part.columns]
-        part = part.rename(columns={"date": "timestamp", "adj close": "adj_close"})
-        part = part.with_columns(pl.lit(ticker).alias("ticker"))
-        frames.append(pl.from_pandas(part))
+        frames.append(_pandas_ohlcv_to_polars(pdf[ticker], ticker))
     return frames

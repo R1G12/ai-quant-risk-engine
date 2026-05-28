@@ -110,6 +110,16 @@ ai-quant-risk-engine/
 
 Non-technical users: see [docs/quickstart_nontechnical.md](docs/quickstart_nontechnical.md).
 
+**Configure a run:** edit [configs/run.yaml](configs/run.yaml) (tickers, `demo` vs `live`, portfolio weighting), then:
+
+```powershell
+aqre prepare
+aqre run profile
+# or: aqre run profile --dashboard
+```
+
+See [docs/run_profile.md](docs/run_profile.md). The trading notebook remains standalone.
+
 ```powershell
 cd ai-quant-risk-engine
 py -3.12 -m venv .venv312

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import polars as pl
 
 from src.market.adapters.sample import ensure_external_sample_written, load_sample_market
 from src.market.adapters.yfinance import load_yfinance_market
+from src.market.ticker_validation import format_skip_messages, require_min_tickers, validate_market_tickers
 from src.utils.config import load_app_config
 from src.utils.logger import get_logger
 from src.utils.metrics import log_stage_metrics
@@ -25,6 +27,17 @@ def ingest_market_data(output_dir: Path | None = None) -> Path:
     ensure_dir(out)
 
     LOGGER.info("Ingesting market data", extra={"source": cfg.source})
+
+    filter_result = validate_market_tickers(cfg.tickers, cfg.source)
+    for line in format_skip_messages(filter_result):
+        LOGGER.warning(line)
+    require_min_tickers(filter_result, context="market ingest")
+    if filter_result.skipped:
+        LOGGER.warning(
+            "Market ingest using %d ticker(s); edit configs/run.yaml to replace skipped symbols.",
+            len(filter_result.valid),
+        )
+    cfg = replace(cfg, tickers=filter_result.valid)
 
     if cfg.source == "yfinance":
         lf = load_yfinance_market(cfg)

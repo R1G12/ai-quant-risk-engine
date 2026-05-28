@@ -49,6 +49,10 @@ cd ai-quant-risk-engine
 
 ---
 
+## Configure your run (optional)
+
+Edit [configs/run.yaml](../configs/run.yaml) for tickers, `demo` vs `live`, and portfolio weights. See [run_profile.md](run_profile.md).
+
 ## Step 2 — Run one command
 
 ### Windows (PowerShell)

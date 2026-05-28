@@ -15,6 +15,9 @@ def ensure_holdings(app: AppConfig) -> Path:
     path = Path(app.risk.portfolio.holdings_path)
     if not path.is_absolute():
         path = PROJECT_ROOT / path
+    manifest = PROJECT_ROOT / "data" / "run_manifest.json"
+    if path.is_file() and manifest.is_file():
+        return path
     if path.is_file():
         return path
 

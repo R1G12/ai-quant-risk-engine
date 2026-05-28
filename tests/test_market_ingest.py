@@ -10,6 +10,8 @@ from src.market.ingest import ingest_market_data
 
 def test_ingest_and_clean_sample_pipeline(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("MARKET_SOURCE", "sample")
+    monkeypatch.setenv("AQRE_SKIP_TICKER_VALIDATION", "1")
+    monkeypatch.setattr("src.utils.config.load_run_config", lambda *_a, **_k: None)
     raw = tmp_path / "raw" / "market"
     processed = tmp_path / "processed" / "market"
 

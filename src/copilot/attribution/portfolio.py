@@ -37,6 +37,14 @@ def attribution_summary(ctx: PortfolioContext) -> Explanation:
         mu = float(row["mean_return"] or 0.0)
         rows.append({"ticker": t, "weight": w, "mean_return": mu, "contrib": w * mu})
 
+    if not rows:
+        return Explanation(
+            title="Portfolio attribution",
+            summary="No overlapping tickers between weights and risk dataset.",
+            evidence=evidence,
+            confidence="low",
+        )
+
     contrib = pl.DataFrame(rows).sort("contrib", descending=True)
     evidence["attribution_table"] = contrib.to_dicts()
 

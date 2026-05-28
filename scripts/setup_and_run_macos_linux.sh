@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-market_source="sample"
+market_source=""
 pin_dates="0"
 skip_repro="0"
 legacy="0"
@@ -98,7 +98,9 @@ export HF_HOME="$(cd "$hf_home" && pwd)"
 export TRANSFORMERS_CACHE="$HF_HOME"
 export PIP_CACHE_DIR="$(cd "$pip_cache" && pwd)"
 
-export MARKET_SOURCE="$market_source"
+if [[ -n "$market_source" ]]; then
+  export MARKET_SOURCE="$market_source"
+fi
 if [[ "$pin_dates" == "1" ]]; then
   export MARKET_PIN_DATES="1"
 fi
@@ -111,19 +113,23 @@ echo "== Installing dependencies (this can take a while) =="
 
 if [[ "$skip_repro" != "1" ]]; then
   echo ""
-  echo "== Running full pipeline (dvc repro) =="
-  "$venv_py" -m dvc repro
+  echo "== Prepare + full pipeline (configs/run.yaml) =="
+  profile_args=(run profile --dashboard)
+  if [[ "$legacy" == "1" ]]; then
+    profile_args+=(--legacy)
+  fi
+  "$venv_py" -m src.cli "${profile_args[@]}"
 else
   echo ""
-  echo "== Skipping pipeline run (--skip-repro) =="
-fi
-
-echo ""
-echo "== Launching dashboard =="
-if [[ "$legacy" == "1" ]]; then
-  "$venv_py" -m src.cli dashboard --legacy
-else
-  "$venv_py" -m src.cli dashboard
+  echo "== Prepare only (--skip-repro) =="
+  "$venv_py" -m src.cli prepare
+  echo ""
+  echo "== Launching dashboard =="
+  if [[ "$legacy" == "1" ]]; then
+    "$venv_py" -m src.cli dashboard --legacy
+  else
+    "$venv_py" -m src.cli dashboard
+  fi
 fi
 
 if [[ "$api" == "1" ]]; then

@@ -104,8 +104,8 @@ $env:PIP_CACHE_DIR = (Resolve-Path $pipCache).Path
 $venvScripts = (Resolve-Path (Join-Path $venvDir 'Scripts')).Path
 $env:Path = $venvScripts + ';' + $env:Path
 
-# Environment overrides for this run
-$env:MARKET_SOURCE = $MarketSource
+# Optional session overrides (configs/run.yaml is the default source of truth)
+if ($MarketSource) { $env:MARKET_SOURCE = $MarketSource }
 if ($PinDates) { $env:MARKET_PIN_DATES = "1" }
 
 Write-Section "Installing dependencies (this can take a while)"
@@ -115,17 +115,19 @@ Write-Section "Installing dependencies (this can take a while)"
 & $venvPy -m pip install -e '.[dev,market,risk,research,dashboard,platform]'
 
 if (-not $SkipRepro) {
-  Write-Section "Running full pipeline (dvc repro)"
-  & $venvPy -m dvc repro
+  Write-Section "Prepare + full pipeline (configs/run.yaml)"
+  $profileArgs = @("run", "profile", "--dashboard")
+  if ($Legacy) { $profileArgs += "--legacy" }
+  & $venvPy -m src.cli @profileArgs
 } else {
-  Write-Section 'Skipping pipeline run (SkipRepro flag set)'
-}
-
-Write-Section "Launching dashboard"
-if ($Legacy) {
-  & $venvPy -m src.cli dashboard --legacy
-} else {
-  & $venvPy -m src.cli dashboard
+  Write-Section "Prepare only (SkipRepro)"
+  & $venvPy -m src.cli prepare
+  Write-Section "Launching dashboard"
+  if ($Legacy) {
+    & $venvPy -m src.cli dashboard --legacy
+  } else {
+    & $venvPy -m src.cli dashboard
+  }
 }
 
 if ($Api) {

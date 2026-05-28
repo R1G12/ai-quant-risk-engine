@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from notebooks.trading_notebook_utils import (
+from src.portfolio.weights import (
     aggregate_portfolio_paths,
     exposure_summary,
     gbm_paths,

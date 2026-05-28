@@ -223,11 +223,22 @@ def _build_frontier(_ctx: ChartContext):
     if not RISK_FRONTIER_PATH.is_file():
         return None
     fr = pl.read_parquet(RISK_FRONTIER_PATH)
+    ann = 252**0.5
     fig = go.Figure()
     fig.add_trace(
-        go.Scatter(x=fr["volatility"], y=fr["expected_return"], mode="lines+markers", name="Frontier")
+        go.Scatter(
+            x=(fr["volatility"] * ann).to_list(),
+            y=(fr["expected_return"] * 252).to_list(),
+            mode="lines+markers",
+            name="Frontier",
+        )
     )
-    fig.update_layout(title="Efficient frontier", template="plotly_dark")
+    fig.update_layout(
+        title="Efficient frontier (annualized)",
+        xaxis_title="Volatility (annual)",
+        yaxis_title="Return (annual)",
+        template="plotly_dark",
+    )
     return fig
 
 

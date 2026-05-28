@@ -1,3 +1,6 @@
+# User-facing run profile (tickers, live/demo, portfolio weighting): configs/run.yaml
+# Apply with: aqre prepare && aqre run profile
+
 ingestion:
   source: sample
   seed: 42

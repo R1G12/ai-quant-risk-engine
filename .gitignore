@@ -25,6 +25,7 @@ data/risk/
 data/analytics/
 data/research/
 data/cache/
+data/run_manifest.json
 data/raw/portfolio/
 experiments/
 models/
