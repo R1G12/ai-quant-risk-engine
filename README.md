@@ -108,6 +108,8 @@ ai-quant-risk-engine/
 
 **Python 3.12 only** (CI and local dev). Do not use Python 3.14 — many wheels (NumPy, torch) are not ready yet.
 
+Non-technical users: see [docs/quickstart_nontechnical.md](docs/quickstart_nontechnical.md).
+
 ```powershell
 cd ai-quant-risk-engine
 py -3.12 -m venv .venv312

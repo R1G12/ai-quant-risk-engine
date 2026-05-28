@@ -36,4 +36,4 @@ metrics/features_*/
 metrics/risk_*/
 
 # Hugging Face cache (optional local override)
-# .cache/huggingface/
+.cache/
