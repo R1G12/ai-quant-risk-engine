@@ -85,6 +85,9 @@ if [[ ! -x "$venv_py" ]]; then
   exit 1
 fi
 
+# Ensure `python` inside DVC stages resolves to the venv interpreter
+export PATH="$(cd "$venv_dir/bin" && pwd):$PATH"
+
 # Cache dirs inside repo (so reruns are fast)
 cache_root=".cache"
 hf_home="$cache_root/huggingface"
@@ -102,7 +105,8 @@ fi
 
 echo ""
 echo "== Installing dependencies (this can take a while) =="
-"$venv_py" -m pip install --upgrade pip setuptools wheel
+"$venv_py" -m pip install --upgrade pip wheel
+"$venv_py" -m pip install 'setuptools>=68,<82'
 "$venv_py" -m pip install -e ".[dev,market,risk,research,dashboard,platform]"
 
 if [[ "$skip_repro" != "1" ]]; then
@@ -117,14 +121,14 @@ fi
 echo ""
 echo "== Launching dashboard =="
 if [[ "$legacy" == "1" ]]; then
-  "$venv_py" -m aqre dashboard --legacy
+  "$venv_py" -m src.cli dashboard --legacy
 else
-  "$venv_py" -m aqre dashboard
+  "$venv_py" -m src.cli dashboard
 fi
 
 if [[ "$api" == "1" ]]; then
   echo ""
   echo "== Launching API (FastAPI) =="
-  "$venv_py" -m aqre api serve
+  "$venv_py" -m src.cli api serve
 fi
 

@@ -36,7 +36,7 @@ function Write-Section([string]$Text) {
   Write-Host "== $Text =="
 }
 
-Write-Section "AI Quant Risk Engine — setup"
+Write-Section 'AI Quant Risk Engine - setup'
 
 if (-not (Test-Path -Path ".\pyproject.toml")) {
   throw "Run this script from the repo root (folder containing pyproject.toml)."
@@ -70,7 +70,7 @@ function Get-Python312Exe {
 
 $py312 = Get-Python312Exe
 if ($py312 -eq $null) {
-  throw "Python 3.12 is required. Install Python 3.12, then retry. (Test: `py -3.12 --version`)"
+  throw 'Python 3.12 is required. Install Python 3.12, then retry. (Test: py -3.12 --version)'
 }
 
 # Create venv
@@ -100,30 +100,36 @@ $env:HF_HOME = (Resolve-Path $hfHome).Path
 $env:TRANSFORMERS_CACHE = (Resolve-Path $hfHome).Path
 $env:PIP_CACHE_DIR = (Resolve-Path $pipCache).Path
 
+# Ensure `python` inside DVC stages resolves to the venv interpreter
+$venvScripts = (Resolve-Path (Join-Path $venvDir 'Scripts')).Path
+$env:Path = $venvScripts + ';' + $env:Path
+
 # Environment overrides for this run
 $env:MARKET_SOURCE = $MarketSource
 if ($PinDates) { $env:MARKET_PIN_DATES = "1" }
 
 Write-Section "Installing dependencies (this can take a while)"
-& $venvPy -m pip install --upgrade pip setuptools wheel
-& $venvPy -m pip install -e ".[dev,market,risk,research,dashboard,platform]"
+& $venvPy -m pip install --upgrade pip wheel
+# torch pins setuptools<82; avoid upgrading setuptools past that in the bootstrap script
+& $venvPy -m pip install 'setuptools>=68,<82'
+& $venvPy -m pip install -e '.[dev,market,risk,research,dashboard,platform]'
 
 if (-not $SkipRepro) {
   Write-Section "Running full pipeline (dvc repro)"
   & $venvPy -m dvc repro
 } else {
-  Write-Section "Skipping pipeline run (--SkipRepro)"
+  Write-Section 'Skipping pipeline run (SkipRepro flag set)'
 }
 
 Write-Section "Launching dashboard"
 if ($Legacy) {
-  & $venvPy -m aqre dashboard --legacy
+  & $venvPy -m src.cli dashboard --legacy
 } else {
-  & $venvPy -m aqre dashboard
+  & $venvPy -m src.cli dashboard
 }
 
 if ($Api) {
-  Write-Section "Launching API (FastAPI)"
-  & $venvPy -m aqre api serve
+  Write-Section 'Launching API (FastAPI)'
+  & $venvPy -m src.cli api serve
 }
 

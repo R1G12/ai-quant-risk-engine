@@ -53,7 +53,17 @@ cd ai-quant-risk-engine
 
 ### Windows (PowerShell)
 
-Open PowerShell **in the project folder**, then run:
+Open PowerShell **in the project folder**, then run **one** of these:
+
+**Option A — single line (copy/paste once):**
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass; .\scripts\setup_and_run_windows.ps1
+```
+
+**Option B — double-click** `scripts\Run-AQRE.cmd` in File Explorer (no PowerShell typing).
+
+**Option C — two lines** (run line 1, press Enter, then line 2):
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
@@ -129,9 +139,27 @@ The project stores caches inside the repo folder:
 - Windows: install Python 3.12 and retry. Then run `py -3.12 --version`.
 - macOS/Linux: install `python3.12` and retry. Then run `python3.12 --version`.
 
-### “The term 'dvc' is not recognized” / “aqre not found”
+### “The term 'dvc' is not recognized” / “No module named aqre”
 
-The script installs everything into a local virtual environment (`.venv312/`). If the install step failed, scroll up to find the error and re-run the command.\n+
+The script installs everything into a local virtual environment (`.venv312/`). The dashboard is launched via:
+
+```powershell
+.\.venv312\Scripts\python.exe -m src.cli dashboard
+```
+
+(Older docs/scripts used `python -m aqre`, which does not work — `aqre` is a console script, not a Python module.)
+
+### DVC error: `metrics\platform` is already tracked by SCM
+
+Run once from the repo root:
+
+```powershell
+git rm -r --cached metrics/platform
+dvc repro generate_platform_reports
+```
+
+This folder is generated output and should not be committed to Git.
+
 ### FinBERT download is slow / fails
 
 This is usually a network/proxy issue. Try:
