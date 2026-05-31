@@ -153,33 +153,102 @@ def _download_batch(
     return _parse_yfinance_frames(pdf, cfg.tickers)
 
 
-def _collect_frames(cfg: MarketConfig, *, prefer_period: bool) -> list[pl.DataFrame]:
-    """Try several download strategies until one returns data."""
-    period = period_for_rolling_days(cfg.rolling_days)
+def yfinance_download_strategies() -> list[tuple[str, object | None]]:
+    """Ordered Yahoo download strategies (SSL-friendly order for Windows)."""
     strategies: list[tuple[str, object | None]] = [
-        ("curl_cffi", _yfinance_session()),
         ("yfinance_default", None),
-        # Last resort for Windows SSL store issues (common with curl_cffi)
         ("curl_cffi_no_verify", _make_curl_session(verify=False)),
+        ("curl_cffi", _yfinance_session()),
     ]
     if os.getenv("YFINANCE_SSL_VERIFY", "1").lower() in ("0", "false", "no"):
-        # Prefer insecure path first when explicitly requested (dev only)
-        strategies = [("curl_cffi_no_verify", _make_curl_session(verify=False))] + strategies[:-1]
+        strategies = [("curl_cffi_no_verify", _make_curl_session(verify=False))] + [
+            s for s in strategies if s[0] != "curl_cffi_no_verify"
+        ]
+    return strategies
 
-    for label, session in strategies:
-        attempt = _download_per_ticker_period(cfg.tickers, session=session, period=period)
-        if not prefer_period and len(attempt) < len(cfg.tickers):
-            have = {t for f in attempt for t in f["ticker"].unique().to_list()}
-            for bf in _download_batch(cfg, session=session):
+
+def download_tickers_history(
+    tickers: list[str],
+    *,
+    session=None,
+    period: str = "1y",
+    pause_s: float = 0.4,
+) -> list[pl.DataFrame]:
+    """Download per-ticker history frames (shared by ingest and validation)."""
+    return _download_per_ticker_period(tickers, session=session, period=period, pause_s=pause_s)
+
+
+def tickers_with_yfinance_data(
+    tickers: list[str],
+    *,
+    rolling_days: int = 30,
+    pause_s: float = 0.2,
+) -> tuple[list[str], list[str], dict[str, str]]:
+    """Return (valid, skipped, reasons) using the same multi-strategy path as ingest."""
+    period = period_for_rolling_days(rolling_days)
+    valid: list[str] = []
+    reasons: dict[str, str] = {}
+    remaining = list(tickers)
+
+    for label, session in yfinance_download_strategies():
+        if not remaining:
+            break
+        frames = download_tickers_history(remaining, session=session, period=period, pause_s=pause_s)
+        found = {t for f in frames for t in f["ticker"].unique().to_list()}
+        if found:
+            LOGGER.info(
+                "yfinance ticker check strategy=%s validated=%d/%d",
+                label,
+                len(found),
+                len(tickers),
+            )
+        for t in tickers:
+            if t in found and t not in valid:
+                valid.append(t)
+        remaining = [t for t in remaining if t not in found]
+
+    skipped = [t for t in tickers if t not in valid]
+    for t in skipped:
+        reasons[t] = "no price history from yfinance (all download strategies failed)"
+    return valid, skipped, reasons
+
+
+def _collect_frames(cfg: MarketConfig, *, prefer_period: bool) -> list[pl.DataFrame]:
+    """Try download strategies; merge tickers found across attempts."""
+    period = period_for_rolling_days(cfg.rolling_days)
+    frames_by_ticker: dict[str, pl.DataFrame] = {}
+
+    for label, session in yfinance_download_strategies():
+        remaining = [t for t in cfg.tickers if t not in frames_by_ticker]
+        if not remaining:
+            break
+        attempt = download_tickers_history(remaining, session=session, period=period)
+        for f in attempt:
+            t = f["ticker"].unique().to_list()[0]
+            frames_by_ticker[t] = f
+        if not prefer_period and len(frames_by_ticker) < len(cfg.tickers):
+            have = set(frames_by_ticker)
+            batch_cfg = MarketConfig(
+                source=cfg.source,
+                tickers=remaining,
+                start_date=cfg.start_date,
+                end_date=cfg.end_date,
+                rolling_days=cfg.rolling_days,
+            )
+            for bf in _download_batch(batch_cfg, session=session):
                 t = bf["ticker"][0]
                 if t not in have:
-                    attempt.append(bf)
+                    frames_by_ticker[t] = bf
                     have.add(t)
         if attempt:
-            LOGGER.info("yfinance succeeded via strategy=%s rows=%s", label, sum(f.height for f in attempt))
-            return attempt
-        LOGGER.warning("yfinance strategy=%s returned no rows", label)
-    return []
+            LOGGER.info(
+                "yfinance strategy=%s tickers=%d/%d",
+                label,
+                len(frames_by_ticker),
+                len(cfg.tickers),
+            )
+
+    return list(frames_by_ticker.values())
 
 
 def load_yfinance_market(cfg: MarketConfig, *, prefer_period: bool = False) -> pl.LazyFrame:

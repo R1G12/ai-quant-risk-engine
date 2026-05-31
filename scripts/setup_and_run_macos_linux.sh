@@ -15,7 +15,7 @@ Usage:
   bash scripts/setup_and_run_macos_linux.sh
 
 Options:
-  --market-source sample|yfinance   (default: sample)
+  --market-source sample|yfinance   (optional; default: configs/run.yaml mode)
   --pin-dates                      (sets MARKET_PIN_DATES=1)
   --skip-repro                     (skip `dvc repro`)
   --legacy                         (launch legacy Phase 4 dashboard)
@@ -49,7 +49,7 @@ if [[ ! -f "pyproject.toml" ]]; then
   exit 1
 fi
 
-if [[ "$market_source" != "sample" && "$market_source" != "yfinance" ]]; then
+if [[ "$market_source" != "" && "$market_source" != "sample" && "$market_source" != "yfinance" ]]; then
   echo "--market-source must be 'sample' or 'yfinance' (got: $market_source)" >&2
   exit 1
 fi

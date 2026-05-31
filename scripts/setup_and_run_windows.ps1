@@ -13,6 +13,7 @@ Usage (PowerShell):
   .\scripts\setup_and_run_windows.ps1
 
 Optional:
+  .\scripts\setup_and_run_windows.ps1 -MarketSource sample
   .\scripts\setup_and_run_windows.ps1 -MarketSource yfinance -PinDates
   .\scripts\setup_and_run_windows.ps1 -SkipRepro
   .\scripts\setup_and_run_windows.ps1 -Legacy
@@ -22,7 +23,7 @@ Optional:
 [CmdletBinding()]
 param(
   [ValidateSet("sample", "yfinance")]
-  [string]$MarketSource = "sample",
+  [string]$MarketSource = "",
   [switch]$PinDates,
   [switch]$SkipRepro,
   [switch]$Legacy,
@@ -119,9 +120,11 @@ if (-not $SkipRepro) {
   $profileArgs = @("run", "profile", "--dashboard")
   if ($Legacy) { $profileArgs += "--legacy" }
   & $venvPy -m src.cli @profileArgs
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 } else {
   Write-Section "Prepare only (SkipRepro)"
   & $venvPy -m src.cli prepare
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   Write-Section "Launching dashboard"
   if ($Legacy) {
     & $venvPy -m src.cli dashboard --legacy

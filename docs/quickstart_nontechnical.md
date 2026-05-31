@@ -74,8 +74,8 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\scripts\setup_and_run_windows.ps1
 ```
 
-Optional flags:
-- `-MarketSource sample` (default) or `-MarketSource yfinance`
+Optional flags (override [configs/run.yaml](../configs/run.yaml) only when needed):
+- `-MarketSource sample` or `-MarketSource yfinance` (default: use `mode` from run.yaml, usually **live**)
 - `-PinDates` (more reproducible dates)
 - `-SkipRepro` (skip the long pipeline run and just launch the dashboard)
 - `-Legacy` (use the Phase 4 legacy dashboard instead of the Phase 5 platform dashboard)
@@ -97,8 +97,8 @@ Open Terminal **in the project folder**, then run:
 bash scripts/setup_and_run_macos_linux.sh
 ```
 
-Optional flags:
-- `--market-source sample` (default) or `--market-source yfinance`
+Optional flags (override [configs/run.yaml](../configs/run.yaml) only when needed):
+- `--market-source sample` or `--market-source yfinance` (default: use `mode` from run.yaml)
 - `--pin-dates`
 - `--skip-repro`
 - `--legacy`
@@ -170,7 +170,12 @@ This is usually a network/proxy issue. Try:
 - switching networks (home vs corporate)
 - retrying later\n+
 You can still validate installation quickly with `--skip-repro` (dashboard will load but may warn that artifacts are missing).\n+
-### yfinance errors (only if using `yfinance` market source)
+### yfinance / SSL errors (live mode)
 
-Yahoo sometimes blocks requests or SSL cert validation can fail on some machines.\n+
-Try running with the default `sample` market source first (fast install sanity check), then retry `yfinance`.\n+
+The pipeline tries several Yahoo download strategies automatically (default client, then SSL-relaxed fallback). If prepare still fails with certificate errors, retry after:
+
+```powershell
+.venv312\Scripts\pip install certifi curl_cffi
+```
+
+Or one session only (dev): `$env:YFINANCE_SSL_VERIFY = "0"` then re-run the setup script.

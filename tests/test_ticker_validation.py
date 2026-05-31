@@ -30,6 +30,42 @@ def test_require_min_tickers_raises() -> None:
         require_min_tickers(result, context="test")
 
 
+def test_validate_yfinance_uses_fallback_strategies(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    def fake_strategies():
+        return [("mock_a", None), ("mock_b", "session_ok")]
+
+    def fake_download(tickers, *, session=None, period="1y", pause_s=0.4):
+        calls.append(str(session))
+        if session is None:
+            return []
+        import polars as pl
+
+        return [
+            pl.DataFrame(
+                {
+                    "timestamp": ["2024-01-02"],
+                    "ticker": [t],
+                    "close": [100.0],
+                }
+            )
+            for t in tickers
+        ]
+
+    monkeypatch.setattr(
+        "src.market.adapters.yfinance.yfinance_download_strategies",
+        fake_strategies,
+    )
+    monkeypatch.setattr(
+        "src.market.adapters.yfinance.download_tickers_history",
+        fake_download,
+    )
+    result = validate_market_tickers(["CVX", "QQQ"], "yfinance")
+    assert result.valid == ["CVX", "QQQ"]
+    assert calls == ["None", "session_ok"]
+
+
 def test_load_sample_market_no_synthetic_for_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import polars as pl
 

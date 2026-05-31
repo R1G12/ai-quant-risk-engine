@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import time
 from dataclasses import dataclass, field
 
 from src.utils.paths import EXTERNAL_SAMPLE_MARKET_DIR
@@ -39,35 +38,10 @@ def format_skip_messages(result: TickerFilterResult) -> list[str]:
 
 
 def _validate_yfinance(tickers: list[str]) -> TickerFilterResult:
-    """Require a non-empty recent history from Yahoo Finance."""
-    import yfinance as yf
+    """Require recent Yahoo history using the same multi-strategy path as market ingest."""
+    from src.market.adapters.yfinance import tickers_with_yfinance_data
 
-    from src.market.adapters.yfinance import period_for_rolling_days
-
-    period = period_for_rolling_days(30)
-    valid: list[str] = []
-    skipped: list[str] = []
-    reasons: dict[str, str] = {}
-
-    for i, ticker in enumerate(tickers):
-        if i > 0:
-            time.sleep(0.25)
-        try:
-            t = yf.Ticker(ticker)
-            try:
-                hist = t.history(period=period, auto_adjust=True, raise_errors=True)
-            except TypeError:
-                hist = t.history(period=period, auto_adjust=True)
-        except Exception as exc:
-            skipped.append(ticker)
-            reasons[ticker] = str(exc)
-            continue
-        if hist is None or hist.empty:
-            skipped.append(ticker)
-            reasons[ticker] = "no price history returned (unknown or delisted symbol)"
-            continue
-        valid.append(ticker)
-
+    valid, skipped, reasons = tickers_with_yfinance_data(tickers, rolling_days=30)
     return TickerFilterResult(requested=list(tickers), valid=valid, skipped=skipped, reasons=reasons)
 
 
