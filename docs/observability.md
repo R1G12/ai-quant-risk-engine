@@ -20,7 +20,7 @@ Streamlit page **Monitoring** (`dashboards/pages/5_Monitoring.py`) surfaces chec
 
 ## Metrics
 
-DVC stage `generate_platform_reports` logs to `metrics/platform/metrics.json`.
+DVC stage `generate_platform_reports` logs to `metrics/platform/metrics.json` (gitignored; do not commit — [mlops.md](mlops.md)).
 
 ## Future work
 

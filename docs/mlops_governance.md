@@ -4,7 +4,7 @@
 
 | Control | Mechanism |
 |---------|-----------|
-| Reproducibility | DVC lock + params.yaml |
+| Reproducibility | DVC lock + `params.yaml` + optional [run profile](run_profile.md) |
 | Experiment trace | `experiments/*/manifest.yaml` |
 | Human review | Copilot `requires_human_review` default |
 | Audit trail | Copilot `evidence` JSON in API + UI |
@@ -29,11 +29,12 @@ Run via: `aqre workflow run refresh_market`
 
 ## Promotion checklist
 
-1. `pytest` green on Python 3.12
-2. `dvc repro` through required phases
-3. Monitoring health OK
-4. Risk committee sign-off on copilot brief
-5. Commit `dvc.lock` + params changes
+1. `pytest` green on Python 3.12 (matches [`.github/workflows/ci.yml`](../.github/workflows/ci.yml))
+2. `dvc repro` through required phases (CI runs sample pipeline with `RUN_PROFILE=configs/run.ci.yaml`)
+3. No generated `metrics/*` folders committed to Git
+4. Monitoring health OK
+5. Risk committee sign-off on copilot brief
+6. Commit `dvc.lock` + params / config changes (not `data/` or `metrics/` artifacts)
 
 ## Secrets
 

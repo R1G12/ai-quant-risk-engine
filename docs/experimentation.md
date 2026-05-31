@@ -19,7 +19,9 @@ dvc repro sentiment
 
 ## Change parameters
 
-Edit [`params.yaml`](../params.yaml) or [`configs/`](../configs/):
+**Run profile (tickers, mode, portfolio):** edit [`configs/run.yaml`](../configs/run.yaml) and run `aqre prepare` — see [run_profile.md](run_profile.md).
+
+**DVC / model params:** edit [`params.yaml`](../params.yaml) or [`configs/`](../configs/):
 
 ```yaml
 sentiment:
@@ -92,6 +94,8 @@ See also [`experiment_tracking.md`](experiment_tracking.md) and [`research_frame
 | Issue | Mitigation |
 |-------|------------|
 | FinBERT download slow | Set `HF_TOKEN`; cache model locally |
-| DVCLive / git lock on Windows | Already using `Live(save_dvc_exp=False)` |
+| `metrics/...` tracked by SCM | `git rm -r --cached metrics/sentiment metrics/research_*` — see [quickstart_nontechnical.md](quickstart_nontechnical.md) |
+| DVCLive / git lock on Windows | Sentiment stage uses `save_dvc_exp=False` where configured; research metrics stay gitignored |
 | CUDA OOM | Lower `batch_size` in params |
 | Empty processed file | Re-run `dvc repro ingest preprocess` |
+| CI holdings mismatch | Run `aqre prepare` or let risk stages refresh stale `holdings.parquet` — [run_profile.md](run_profile.md) |

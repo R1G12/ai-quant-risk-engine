@@ -5,7 +5,7 @@
 1. **Assist, not automate** — no order execution.
 2. **Evidence-backed** — every answer includes artifact-derived evidence.
 3. **Uncertainty visible** — confidence levels and human-review flags.
-4. **Reproducible** — tied to `experiment_id` and DVC params.
+4. **Reproducible** — tied to `experiment_id`, DVC params, and optional [run profile](run_profile.md) (`data/run_manifest.json`).
 
 ## Decision workflow
 

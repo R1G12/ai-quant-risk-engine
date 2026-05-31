@@ -35,13 +35,15 @@ Do not add pandas imports to `src/` unless explicitly migrating a notebook modul
 - Market join keys: `timestamp`, `ticker` (UTC timestamps)
 - Partition columns: `year`, `month` on market data
 
-## Phase 2 rules
+## Phase 2+ rules
 
 - Use `scan_parquet` for reads, lazy pipelines for transforms
 - Feature logic in `src/features/`; DVC entrypoints in `src/features/pipeline/`
-- Market sources in `src/market/adapters/` only
-- `MARKET_SOURCE` env overrides `params.yaml` → `market.source`
-- Never commit `data/features/` or `data/processed/market/` (gitignored)
+- Market sources in `src/market/adapters/` only; ticker validation in `src/market/ticker_validation.py` (no synthetic fill for missing symbols in sample mode)
+- **Run profile:** `configs/run.yaml` / `configs/run.ci.yaml` merged via `load_app_config()`; `RUN_PROFILE` env for CI
+- `MARKET_SOURCE` env overrides `params.yaml` → `market.source` (except `aqre run profile` / `aqre prepare`, which set source from `mode`)
+- Never commit `data/features/`, `data/processed/market/`, or generated `metrics/sentiment/`, `metrics/research_*/`, `metrics/platform/` (gitignored; DVC owns them)
+- Portfolio weights: `src/portfolio/prepare.py`, `src/portfolio/weights.py`, `src/risk/portfolio/holdings.py`
 
 ## Modularity requirements
 
@@ -60,9 +62,11 @@ Do not add pandas imports to `src/` unless explicitly migrating a notebook modul
 
 - Run `dvc repro` after changing pipeline code or params
 - Commit `dvc.lock` when outputs change
-- Do not commit `.venv`, `.venv312`, `logs/`, `__pycache__/`, `*.pyc`, or `data/processed/`
+- Do not commit `.venv`, `.venv312`, `logs/`, `__pycache__/`, `*.pyc`, `data/processed/`, or DVCLive folders under `metrics/` (see [mlops.md](mlops.md))
+- CI: `.github/workflows/ci.yml` — `pytest`, full sample `dvc repro`, `RUN_PROFILE=configs/run.ci.yaml`
 - Activate `.venv312` before `dvc repro` / `pytest` so `python` on PATH is 3.12
 - Use `.env` for secrets (never commit); `.env.example` for templates
+- Tests that call `materialize_run()` must patch `PROJECT_ROOT` to `tmp_path` so they do not write holdings into the real repo (breaks CI)
 
 ## Preferred libraries
 

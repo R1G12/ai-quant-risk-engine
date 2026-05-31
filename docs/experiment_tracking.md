@@ -10,6 +10,8 @@ Each research stage writes `experiments/<type>/<experiment_id>/manifest.yaml` wi
 
 `ResearchLive` (`src/utils/experiment.py`) logs to `metrics/research_*` with `save_dvc_exp=True`.
 
+These directories are **DVC pipeline outputs** and are gitignored. Do not `git add metrics/sentiment/` or `metrics/research_*` — see [mlops.md](mlops.md) and [quickstart_nontechnical.md](quickstart_nontechnical.md) if Git reports “already tracked by SCM”.
+
 ## Comparison
 
 ```bash

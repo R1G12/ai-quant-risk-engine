@@ -2,7 +2,7 @@
 
 ## Overview
 
-Phase 3 adds portfolio-level quantitative risk on top of `risk_dataset.parquet` (Phase 2).
+Phase 3 adds portfolio-level quantitative risk on top of `risk_dataset.parquet` (Phase 2) and static holdings from [run_profile.md](run_profile.md) (`data/raw/portfolio/holdings.parquet`).
 
 ## Models implemented
 

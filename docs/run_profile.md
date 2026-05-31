@@ -48,6 +48,8 @@ aqre run profile --dashboard
 
 `aqre prepare` writes `data/raw/portfolio/holdings.parquet` and `data/run_manifest.json`.
 
+**Stale holdings:** if `holdings.parquet` exists but tickers no longer match the active profile (e.g. after merging `main` or switching `run.yaml` ↔ `run.ci.yaml`), risk stages call `ensure_holdings()` and rewrite equal weights for the current universe. Custom weights from a prior `aqre prepare` are kept when file tickers still match.
+
 ## `research`
 
 - **backtest_weight_source**: portfolio label in optimization output (default `max_sharpe`).

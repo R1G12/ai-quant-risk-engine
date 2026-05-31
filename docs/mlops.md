@@ -26,15 +26,20 @@ Defined in [`dvc.yaml`](../dvc.yaml).
 
 ## Parameters
 
+- [`configs/run.yaml`](../configs/run.yaml) – local run profile (tickers, `demo`/`live`, portfolio weighting); see [run_profile.md](run_profile.md)
+- [`configs/run.ci.yaml`](../configs/run.ci.yaml) – CI sample profile (`RUN_PROFILE` in GitHub Actions)
 - [`params.yaml`](../params.yaml) – DVC-tracked params (`market`, `features`, `sentiment`, …)
-- [`configs/market.yaml`](../configs/market.yaml) – tickers, dates, compression
+- [`configs/market.yaml`](../configs/market.yaml) – default tickers, dates, compression
 - [`configs/features.yaml`](../configs/features.yaml) – windows, risk-free rate
+- [`configs/risk/`](../configs/risk/) – volatility, VaR, portfolio, optimization
 
 Environment overrides:
 
 | Variable | Purpose |
 |----------|---------|
+| `RUN_PROFILE` | Path to `configs/run.yaml` or `configs/run.ci.yaml` |
 | `MARKET_SOURCE` | `sample` or `yfinance` |
+| `MARKET_PIN_DATES` | `1` = pinned dates (CI) |
 | `PROJECT_*` | FinBERT / batch overrides |
 | `HF_TOKEN` | Hugging Face Hub auth |
 
@@ -49,9 +54,14 @@ dvc metrics show
 
 ## CI
 
-- `pytest` with `MARKET_SOURCE=sample`
-- `dvc repro` Phase 1 ingest/preprocess
-- Phase 2 market + feature stages (sentiment features require Phase 1 output or empty schema)
+See [`.github/workflows/ci.yml`](../.github/workflows/ci.yml):
+
+- `pytest -q` with extras `dev,market,risk,research,dashboard`
+- Env: `MARKET_SOURCE=sample`, `MARKET_PIN_DATES=1`, `RUN_PROFILE=configs/run.ci.yaml`
+- `dvc repro` Phase 1 (`ingest`, `preprocess`) then full sample pipeline through `generate_research_reports`
+- Verify `data/analytics/dashboard/index.html`
+
+Do not commit generated files under `metrics/sentiment/`, `metrics/research_*/`, or `metrics/platform/` — DVC stage outputs (gitignored).
 
 ## Metrics
 

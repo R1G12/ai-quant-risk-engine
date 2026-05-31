@@ -21,12 +21,16 @@
 
 ## Run locally
 
+Requires prior `dvc repro` (or `aqre run profile`) so parquet artifacts exist under `data/`.
+
 ```powershell
 .venv312\Scripts\activate
-pip install -e ".[platform,dashboard]"
+pip install -e ".[platform,dashboard,risk,research]"
 aqre api serve
 # or: uvicorn src.api.main:app --reload
 ```
+
+Pair with `aqre dashboard` for the Streamlit platform UI. See [system_architecture.md](system_architecture.md).
 
 ## Inference caching
 

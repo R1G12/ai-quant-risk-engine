@@ -14,16 +14,17 @@ Phase 4 adds reproducible **simulation**, **backtesting**, and **experiment trac
 
 ## Workflow
 
-1. **Baseline:** `dvc repro` through `generate_research_reports`
-2. **Sweeps:** `dvc exp run <stage> -S research.simulation.n_paths=2000`
+1. **Configure:** [run_profile.md](run_profile.md) → `aqre prepare` (optional but recommended for holdings/tickers)
+2. **Baseline:** `aqre run profile` or `dvc repro` through `generate_research_reports`
+3. **Sweeps:** `dvc exp run <stage> -S research.simulation.n_paths=2000`
 
-See `experiment_tracking.md` for DVCLive and manifest details.
+See [experiment_tracking.md](experiment_tracking.md) for DVCLive and manifest details.
 
 ## Dashboard and report
 
 After `generate_research_reports`:
 
-- **Primary interactive UX:** Streamlit — `streamlit run src/analytics/streamlit_dashboard.py` (install `.[dashboard,market,research,risk]`). Date presets (1Y / 6M / 3M / YTD / All), KPI cards, sample-first with background yfinance and a **Use live data** toggle for prices.
+- **Primary interactive UX:** `aqre dashboard` (Phase 5 platform) or `aqre dashboard --legacy` / `streamlit run src/analytics/streamlit_dashboard.py` (Phase 4 explorer). Install `.[dashboard,market,research,risk]`. Date presets, KPI cards, sample-first with background yfinance and a **Use live data** toggle for prices.
 - **Static export (CI/reports):** `data/analytics/dashboard/index.html` — iframe chart picker
 - **Interpreted metrics:** `data/research/reports/REPORT.md`
 - Standalone Plotly files remain under `data/analytics/research/` and `data/analytics/risk/`
@@ -43,8 +44,9 @@ Local dev defaults to a **rolling window** (`use_rolling_window: true` in `param
 
 ```powershell
 $env:MARKET_SOURCE = "sample"
+# Or: aqre run profile --pin-dates
 dvc repro ingest_market_data clean_market_data generate_returns merge_features
 # Continue through risk + research stages as needed
 ```
 
-CI pins dates via `MARKET_PIN_DATES=1` and fixed `start_date` / `end_date` in `params.yaml`.
+**CI** (see [mlops.md](mlops.md)): `RUN_PROFILE=configs/run.ci.yaml`, `MARKET_PIN_DATES=1`, `MARKET_SOURCE=sample`, full pipeline through `generate_research_reports`.

@@ -79,30 +79,41 @@ flowchart TB
 - VaR / CVaR: historical, parametric, Monte Carlo
 - Correlation/covariance with Ledoit-Wolf shrinkage
 - HMM regimes, portfolio analytics
-- Markowitz min-var / max-Sharpe + efficient frontier
+- Markowitz min-var / max-Sharpe + efficient frontier (run profile: equal / manual / partial / optimised)
 - Plotly dashboard: `data/analytics/risk/`
+
+### Phase 4
+- Monte Carlo (GBM, multivariate, regime GBM), stress tests, scenarios
+- Backtesting with configurable weight source (`research.backtest_weight_source`)
+- Experiment comparison + research HTML dashboard (`generate_research_reports`)
+
+### Phase 5
+- Multi-page Streamlit platform, copilot, FastAPI, monitoring, governance reports (`aqre dashboard`, `aqre copilot`, `aqre api`)
 
 ## Project structure
 
 ```
 ai-quant-risk-engine/
-├── configs/              # YAML + schemas/
-├── data/
-│   ├── raw/market/
-│   ├── processed/market/
-│   ├── features/
-│   ├── risk/
-│   └── external/
+├── configs/
+│   ├── run.yaml          # Local run profile (tickers, demo/live, portfolio)
+│   ├── run.ci.yaml       # CI sample profile (GitHub Actions)
+│   ├── market.yaml, features.yaml, risk/, schemas/
+├── data/                 # Pipeline outputs (mostly gitignored; DVC-tracked)
 ├── docs/
+├── notebooks/            # Exploratory trading notebooks (not the main app)
+├── scripts/              # setup_and_run_windows.ps1, setup_and_run_macos_linux.sh
 ├── src/
-│   ├── ingestion/
-│   ├── market/
-│   ├── features/
-│   ├── sentiment/
+│   ├── ingestion/, preprocessing/, sentiment/
+│   ├── market/, features/, risk/, portfolio/
+│   ├── simulation/, backtesting/, research/
+│   ├── analytics/, dashboards/, copilot/, api/, platform/
 │   └── utils/
+├── tests/
 ├── dvc.yaml
-└── params.yaml
+└── params.yaml           # DVC params (merged with configs/ at runtime)
 ```
+
+**Language stats on GitHub:** a few notebooks under `notebooks/` with saved Plotly outputs can dominate the “Jupyter” percentage. Production code lives in `src/` (~200+ Python modules).
 
 ## Setup
 
@@ -113,18 +124,27 @@ Non-technical users: see [docs/quickstart_nontechnical.md](docs/quickstart_nonte
 **Configure a run:** edit [configs/run.yaml](configs/run.yaml) (tickers, `demo` vs `live`, portfolio weighting), then:
 
 ```powershell
-aqre prepare
-aqre run profile
+aqre prepare          # holdings + run manifest; validates tickers
+aqre run profile      # applies profile env + full dvc repro
 # or: aqre run profile --dashboard
 ```
 
-See [docs/run_profile.md](docs/run_profile.md). The trading notebook remains standalone.
+See [docs/run_profile.md](docs/run_profile.md). CI uses [configs/run.ci.yaml](configs/run.ci.yaml) via `RUN_PROFILE` (sample tickers, pinned dates).
+
+**One-shot bootstrap (Windows / macOS / Linux):**
+
+```powershell
+.\scripts\setup_and_run_windows.ps1
+# ./scripts/setup_and_run_macos_linux.sh
+```
+
+**Manual venv:**
 
 ```powershell
 cd ai-quant-risk-engine
 py -3.12 -m venv .venv312
 .venv312\Scripts\activate
-pip install -e ".[dev,market,risk]"
+pip install -e ".[dev,market,risk,research,dashboard]"
 copy .env.example .env
 ```
 
@@ -179,7 +199,9 @@ Until repro completes, the slider clamps to whatever exists on disk (e.g. 2024 Q
 
 ## Configure tickers and date range
 
-Edit [`params.yaml`](params.yaml) or [`configs/market.yaml`](configs/market.yaml):
+**Preferred:** [configs/run.yaml](configs/run.yaml) (merged into app config; drives `aqre prepare` and ingest).
+
+**Legacy / DVC params:** [`params.yaml`](params.yaml) or [`configs/market.yaml`](configs/market.yaml):
 
 ```yaml
 market:
@@ -231,14 +253,24 @@ After `pip install -e ".[dev]"`, use the unified CLI for common workflows:
 
 ```powershell
 aqre config show
+aqre prepare [--profile configs/run.yaml]
+aqre run profile [--dashboard] [--pin-dates]
 aqre run phase2 --market-source sample
 aqre run phase3 --market-source sample --dry-run
 aqre run stage merge_features
 aqre run all
-aqre dashboard
+aqre dashboard              # Phase 5 platform UI
+aqre dashboard --legacy     # Phase 4 chart explorer
 ```
 
-Environment overrides work as before (`MARKET_SOURCE`, `MARKET_PIN_DATES`, `NEWS_SOURCE`).
+| Variable | Purpose |
+|----------|---------|
+| `RUN_PROFILE` | Path to run YAML (CI: `configs/run.ci.yaml`) |
+| `MARKET_SOURCE` | `sample` or `yfinance` (plain `dvc repro`; profile commands override when using `aqre run profile`) |
+| `MARKET_PIN_DATES` | `1` = use pinned `start_date` / `end_date` (CI) |
+| `NEWS_SOURCE` | `sample` (default for news ingest) |
+
+Holdings under `data/raw/portfolio/holdings.parquet` are refreshed automatically when tickers no longer match the active profile (e.g. after switching from local `run.yaml` to CI tickers).
 
 ## Run pipelines
 
@@ -299,6 +331,27 @@ dvc push
 
 See [docs/mlops.md](docs/mlops.md) for more detail.
 
+## Continuous integration (GitHub Actions)
+
+Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on `main` / `master` / `Romain_Phase_1`.
+
+| Step | What runs |
+|------|-----------|
+| `pytest -q` | Full test suite (`dev,market,risk,research,dashboard` extras) |
+| DVC Phase 1 | `ingest`, `preprocess` |
+| DVC Phase 2+ | Sample market → features → merge → risk metrics → research reports |
+| Smoke check | `data/analytics/dashboard/index.html` exists |
+
+CI environment:
+
+```yaml
+MARKET_SOURCE: sample
+MARKET_PIN_DATES: "1"
+RUN_PROFILE: configs/run.ci.yaml
+```
+
+**Do not commit generated pipeline metrics** under `metrics/sentiment/`, `metrics/research_*/`, or `metrics/platform/` — DVC owns those outputs. They are gitignored; if they were ever committed on `main`, remove with `git rm -r --cached metrics/<path>`.
+
 ## Testing
 
 ```bash
@@ -307,21 +360,66 @@ pytest
 pytest tests/test_phase5_integration.py tests/test_copilot_explanations.py -v
 ```
 
+Requires **Python 3.12** (see [`tests/conftest.py`](tests/conftest.py)).
+
+## Notebooks
+
+Exploratory workflows only — canonical pipeline code is under `src/`.
+
+| Notebook | Notes |
+|----------|--------|
+| `notebooks/trading_risk_manager_final.ipynb` | Latest trading / risk demo |
+| `notebooks/trading_risk_manager_v*.ipynb` | Older iterations (large if outputs saved) |
+| `notebooks/trading_notebook_utils.py` | Shared helpers (ported into `src/portfolio/`) |
+
+Align a notebook run with the pipeline by copying values from [configs/run.yaml](configs/run.yaml). Clear saved outputs before commit if you want smaller diffs (`jupyter nbconvert --clear-output --inplace notebooks/*.ipynb`).
+
 ## Documentation
+
+Full index: [docs/README.md](docs/README.md)
+
+### Getting started
+
+- [Quickstart (non-technical)](docs/quickstart_nontechnical.md)
+- [Run profile](docs/run_profile.md) — `configs/run.yaml`, `aqre prepare`, weighting modes
+- [Roadmap](docs/roadmap.md)
+
+### Architecture & data
 
 - [Architecture](docs/architecture.md)
 - [Data architecture](docs/data_architecture.md)
-- [Polars guidelines](docs/polars_guidelines.md)
 - [Feature store](docs/feature_store.md)
-- [MLOps](docs/mlops.md)
-- [Agents guide](docs/agents.md)
-- [Roadmap](docs/roadmap.md)
+- [Polars guidelines](docs/polars_guidelines.md)
+
+### Risk & portfolio (Phase 3)
+
 - [Risk models](docs/risk_models.md)
 - [Portfolio theory](docs/portfolio_theory.md)
 - [Quantitative methods](docs/quantitative_methods.md)
 - [Optimization pipeline](docs/optimization_pipeline.md)
 
+### Research (Phase 4)
+
+- [Research framework](docs/research_framework.md)
+- [Simulation architecture](docs/simulation_architecture.md)
+- [Backtesting methodology](docs/backtesting_methodology.md)
+- [Experiment tracking](docs/experiment_tracking.md)
+- [Experimentation (how-to)](docs/experimentation.md)
+
+### Platform (Phase 5)
+
+- [System architecture](docs/system_architecture.md)
+- [Copilot architecture](docs/copilot_architecture.md)
+- [Decision engine](docs/decision_engine.md)
+- [Model serving (API)](docs/model_serving.md)
+- [Observability](docs/observability.md)
+- [MLOps governance](docs/mlops_governance.md)
+
+### Engineering
+
+- [MLOps](docs/mlops.md) — DVC, CI, remotes, metrics
+- [Agents guide](docs/agents.md) — conventions for AI / contributors
+
 ## Roadmap
 
-- **Phase 2b:** VaR, GARCH, portfolio optimization in `src/risk` / `src/portfolio`
-- **Phase 3:** Private-markets Monte Carlo / quantum research
+See [docs/roadmap.md](docs/roadmap.md) for current backlog. Phases 1–5 (sentiment → market features → risk engine → research → platform dashboard/copilot/API) are implemented in this repo; future work includes live news ingestion and extended private-markets research.

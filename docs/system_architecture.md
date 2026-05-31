@@ -35,5 +35,6 @@ flowchart LR
 ## Deployment philosophy
 
 - Local-first: `.venv312`, sample data, optional yfinance.
+- Run configuration: [configs/run.yaml](../configs/run.yaml) + `aqre prepare` / `aqre run profile` ([run_profile.md](run_profile.md)).
 - No mandatory cloud LLM; copilot is rule-based with optional prompt templates for future LLM wiring.
 - Human-in-the-loop on every recommendation.

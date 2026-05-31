@@ -10,6 +10,8 @@ The platform uses a **parquet-first data lake** with Hive-style partitioning for
 data/
 ├── raw/
 │   ├── news.csv                 # Phase 1 (migrate to parquet in stretch)
+│   ├── portfolio/
+│   │   └── holdings.parquet     # From aqre prepare / run profile (gitignored)
 │   └── market/                  # Raw landing from ingest
 ├── processed/
 │   ├── news.parquet
@@ -55,7 +57,9 @@ YAML definitions: [`configs/schemas/`](../configs/schemas/).
 | `sample` | CI, offline tests, no network |
 | `yfinance` | Local reproduction with live downloads |
 
-Set via `params.yaml` → `market.source` or environment variable `MARKET_SOURCE`.
+Set via [configs/run.yaml](../configs/run.yaml) (preferred), `params.yaml` → `market.source`, or environment variable `MARKET_SOURCE`.
+
+**CI** uses `RUN_PROFILE=configs/run.ci.yaml` with `MARKET_PIN_DATES=1` and sample tickers. First sample ingest bootstraps bundled OHLCV under `data/external/sample_market/` when empty.
 
 ## Lineage
 

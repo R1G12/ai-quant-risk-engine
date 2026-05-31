@@ -153,23 +153,25 @@ The script installs everything into a local virtual environment (`.venv312/`). T
 
 (Older docs/scripts used `python -m aqre`, which does not work — `aqre` is a console script, not a Python module.)
 
-### DVC error: `metrics\platform` is already tracked by SCM
+### DVC error: `metrics\...` is already tracked by SCM
 
-Run once from the repo root:
+If CI or `dvc repro` fails with *"output 'metrics/sentiment' is already tracked by SCM"*, Git is tracking folders that DVC generates. Run once from the repo root (PowerShell):
 
 ```powershell
-git rm -r --cached metrics/platform
-dvc repro generate_platform_reports
+git rm -r --cached metrics/sentiment metrics/platform metrics/research_backtests metrics/research_compare metrics/research_evaluation metrics/research_reports metrics/research_scenarios metrics/research_simulations metrics/research_stress 2>$null
+git commit -m "Stop tracking DVC-generated metrics folders"
 ```
 
-This folder is generated output and should not be committed to Git.
+Then re-run your pipeline. These paths are listed in `.gitignore` and should never be committed.
 
 ### FinBERT download is slow / fails
 
 This is usually a network/proxy issue. Try:
 - switching networks (home vs corporate)
-- retrying later\n+
-You can still validate installation quickly with `--skip-repro` (dashboard will load but may warn that artifacts are missing).\n+
+- retrying later
+
+You can still validate installation quickly with `--skip-repro` (dashboard will load but may warn that artifacts are missing).
+
 ### yfinance / SSL errors (live mode)
 
 The pipeline tries several Yahoo download strategies automatically (default client, then SSL-relaxed fallback). If prepare still fails with certificate errors, retry after:

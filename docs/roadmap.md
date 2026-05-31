@@ -37,7 +37,7 @@
 - [x] Research Plotly dashboards + validation tests
 - [x] Docs: `research_framework.md`, `backtesting_methodology.md`, `simulation_architecture.md`, `experiment_tracking.md`
 
-## Phase 5 – Portfolio intelligence platform (in progress)
+## Phase 5 – Portfolio intelligence platform (MVP complete)
 
 - [x] Multi-page institutional dashboard (`src/dashboards/`)
 - [x] Rule-based portfolio copilot (`src/copilot/`)
