@@ -22,6 +22,7 @@ from src.utils.paths import (
     RISK_CORRELATIONS_DIR,
     RISK_FRONTIER_PATH,
     RISK_PORTFOLIO_METRICS_PATH,
+    RISK_PORTFOLIO_RETURNS_PATH,
     RISK_REGIMES_PATH,
     RISK_VAR_DIR,
     RISK_VOLATILITY_DIR,
@@ -133,7 +134,12 @@ def _build_rolling_sharpe(ctx: ChartContext):
 def _build_mc_fan(ctx: ChartContext):
     go, _ = _go()
     app = ctx.app
-    mu, sigma = calibrate_gbm(app)
+    if not RISK_PORTFOLIO_RETURNS_PATH.is_file():
+        return None
+    try:
+        mu, sigma = calibrate_gbm(app)
+    except (FileNotFoundError, OSError):
+        return None
     paths = sample_paths_for_plot(mu, sigma, app.research.simulation)
     t = np.arange(paths.shape[1])
     p5, p50, p95 = np.percentile(paths, [5, 50, 95], axis=0)

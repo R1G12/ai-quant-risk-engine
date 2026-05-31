@@ -105,7 +105,8 @@ def test_explain_drawdown_with_equity(tmp_path, monkeypatch) -> None:
     exp = explain_drawdown(
         _ctx(
             experiment_id=app.research.meta.experiment_id,
-            weights={"AAPL": 0.5, "MSFT": 0.5},
+            weights={"AAPL": 0.2, "MSFT": 0.2, "XOM": 0.2, "GS": 0.2, "JPM": 0.2},
+            tickers=["AAPL", "MSFT", "XOM", "GS", "JPM"],
         ),
         app,
     )

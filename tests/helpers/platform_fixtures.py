@@ -7,12 +7,15 @@ from pathlib import Path
 
 import polars as pl
 
+# Align with configs/run.ci.yaml sample tickers used in CI.
+CI_SAMPLE_TICKERS: tuple[str, ...] = ("AAPL", "MSFT", "XOM", "GS", "JPM")
+
 
 def write_minimal_platform_artifacts(
     root: Path,
     *,
     experiment_id: str = "baseline",
-    tickers: tuple[str, ...] = ("AAPL", "MSFT"),
+    tickers: tuple[str, ...] = CI_SAMPLE_TICKERS,
 ) -> dict[str, Path]:
     """Write minimal risk/research artifacts under a temp tree."""
     paths: dict[str, Path] = {}
@@ -34,7 +37,7 @@ def write_minimal_platform_artifacts(
                     "close": 100.0 + i,
                     "volume": 1_000_000.0,
                     "returns": ret,
-                    "bullish_ratio": 0.45 + 0.1 * j,
+                    "bullish_ratio": 0.45 + 0.1 * (j % 3),
                 }
             )
 
@@ -96,16 +99,29 @@ def write_minimal_platform_artifacts(
     )
     paths["portfolio_metrics"] = metrics_path
 
+    port_returns_path = port_dir / "portfolio_returns.parquet"
+    ts = sorted({r["timestamp"] for r in rows})[:40]
+    pl.DataFrame(
+        {
+            "timestamp": ts,
+            "portfolio_return": [0.001] * len(ts),
+        }
+    ).with_columns(pl.col("timestamp").str.to_datetime(time_zone="UTC")).write_parquet(
+        port_returns_path
+    )
+    paths["portfolio_returns"] = port_returns_path
+
     bt_dir = root / "data" / "research" / "backtests" / f"experiment_id={experiment_id}"
     bt_dir.mkdir(parents=True, exist_ok=True)
     eq_path = bt_dir / "equity_curve.parquet"
     pl.DataFrame(
         {
-            "timestamp": [r["timestamp"] for r in rows[:40]],
-            "portfolio_return": [0.001] * 40,
-            "equity": [1.0 + 0.001 * i for i in range(40)],
-            "drawdown": [0.0] * 35 + [-0.05, -0.08, -0.06, -0.04, -0.02],
-            "is_rebalance": [False] * 40,
+            "timestamp": ts,
+            "portfolio_return": [0.001] * len(ts),
+            "equity": [1.0 + 0.001 * i for i in range(len(ts))],
+            "drawdown": [0.0] * max(0, len(ts) - 5)
+            + [-0.05, -0.08, -0.06, -0.04, -0.02][-min(5, len(ts)) :],
+            "is_rebalance": [False] * len(ts),
         }
     ).with_columns(pl.col("timestamp").str.to_datetime(time_zone="UTC")).write_parquet(
         eq_path
@@ -124,11 +140,16 @@ def write_minimal_platform_artifacts(
     return paths
 
 
+def _sync_path(monkeypatch, module: str, name: str, value: Path) -> None:
+    """Re-bind a path constant imported at module level in tests."""
+    monkeypatch.setattr(f"{module}.{name}", value, raising=False)
+
+
 def patch_paths_to_root(monkeypatch, root: Path) -> dict[str, float]:
-    """Point src.utils.paths constants at a temp artifact tree; pin weights for isolation."""
+    """Point path constants at a temp artifact tree (utils.paths + importers)."""
     from src.utils import paths as p
 
-    weights = {"AAPL": 0.5, "MSFT": 0.5}
+    weights = {t: 1.0 / len(CI_SAMPLE_TICKERS) for t in CI_SAMPLE_TICKERS}
 
     def _load_weights(_app):
         return dict(weights)
@@ -140,17 +161,37 @@ def patch_paths_to_root(monkeypatch, root: Path) -> dict[str, float]:
     ):
         monkeypatch.setattr(target, _load_weights)
 
-    monkeypatch.setattr(p, "RISK_DATASET_PATH", root / "data/features/merged/risk_dataset.parquet")
-    monkeypatch.setattr(p, "RISK_VAR_DIR", root / "data/risk/var")
-    monkeypatch.setattr(p, "RISK_CORRELATIONS_DIR", root / "data/risk/correlations")
-    monkeypatch.setattr(p, "RISK_REGIMES_PATH", root / "data/risk/portfolio/regimes.parquet")
-    monkeypatch.setattr(
-        p, "RISK_PORTFOLIO_METRICS_PATH", root / "data/risk/portfolio/portfolio_metrics.parquet"
+    path_map = {
+        "RISK_DATASET_PATH": root / "data/features/merged/risk_dataset.parquet",
+        "RISK_VAR_DIR": root / "data/risk/var",
+        "RISK_CORRELATIONS_DIR": root / "data/risk/correlations",
+        "RISK_REGIMES_PATH": root / "data/risk/portfolio/regimes.parquet",
+        "RISK_PORTFOLIO_METRICS_PATH": root / "data/risk/portfolio/portfolio_metrics.parquet",
+        "RISK_PORTFOLIO_RETURNS_PATH": root / "data/risk/portfolio/portfolio_returns.parquet",
+        "HOLDINGS_PATH": root / "data/raw/portfolio/holdings.parquet",
+        "RESEARCH_BACKTESTS_DIR": root / "data/research/backtests",
+        "REPORTS_PORTFOLIO_DIR": root / "reports/portfolio",
+        "REPORTS_RISK_DIR": root / "reports/risk",
+        "REPORTS_GOVERNANCE_DIR": root / "reports/governance",
+        "REPORTS_SIMULATIONS_DIR": root / "reports/simulations",
+    }
+
+    for name, value in path_map.items():
+        monkeypatch.setattr(p, name, value)
+
+    modules_using_paths = (
+        "src.copilot.context.builder",
+        "src.copilot.explanations.drawdown",
+        "src.copilot.attribution.portfolio",
+        "src.monitoring.quality.validators",
+        "src.monitoring.drift.baseline",
+        "src.monitoring.health.checks",
+        "src.features.wide_returns",
+        "src.simulation.pipeline._calibration",
+        "src.analytics.dashboard_kpis",
     )
-    monkeypatch.setattr(p, "HOLDINGS_PATH", root / "data/raw/portfolio/holdings.parquet")
-    monkeypatch.setattr(p, "RESEARCH_BACKTESTS_DIR", root / "data/research/backtests")
-    monkeypatch.setattr(p, "REPORTS_PORTFOLIO_DIR", root / "reports/portfolio")
-    monkeypatch.setattr(p, "REPORTS_RISK_DIR", root / "reports/risk")
-    monkeypatch.setattr(p, "REPORTS_GOVERNANCE_DIR", root / "reports/governance")
-    monkeypatch.setattr(p, "REPORTS_SIMULATIONS_DIR", root / "reports/simulations")
+    for mod in modules_using_paths:
+        for name, value in path_map.items():
+            _sync_path(monkeypatch, mod, name, value)
+
     return weights
