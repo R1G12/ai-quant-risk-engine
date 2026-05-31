@@ -1,0 +1,7 @@
+rebalance_freq: monthly
+tc_bps: 10.0
+slippage_bps: 5.0
+walk_forward_train_days: 42
+walk_forward_test_days: 21
+weight_source: max_sharpe
+benchmark_ticker: AAPL

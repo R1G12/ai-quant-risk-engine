@@ -1,0 +1,15 @@
+platform:
+  copilot:
+    enabled: true
+    max_context_rows: 5000
+  api:
+    host: "127.0.0.1"
+    port: 8000
+    enable_cors: true
+  monitoring:
+    freshness_warn_days: 30
+    drift_zscore_threshold: 2.5
+  orchestration:
+    default_market_source: sample
+  reporting:
+    auto_generate_on_refresh: false

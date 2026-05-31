@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, Romain_Phase_1]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test-and-pipeline:
+    runs-on: ubuntu-latest
+    env:
+      MARKET_SOURCE: sample
+      MARKET_PIN_DATES: "1"
+      RUN_PROFILE: configs/run.ci.yaml
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package
+        run: pip install -e ".[dev,market,risk,research,dashboard]"
+
+      - name: Run pytest
+        run: pytest -q
+
+      - name: DVC repro Phase 1
+        run: dvc repro ingest preprocess
+
+      - name: DVC repro Phase 2 sample pipeline
+        run: |
+          dvc repro ingest_market_data clean_market_data generate_returns
+          dvc repro generate_volatility_features generate_technical_features
+          dvc repro generate_sentiment_features merge_features --force
+          dvc repro generate_volatility_metrics generate_var_metrics generate_cvar_metrics
+          dvc repro generate_correlations generate_portfolio_metrics --force
+          dvc repro generate_efficient_frontier
+          dvc repro generate_simulations run_backtests run_stress_tests run_scenario_analysis
+          dvc repro evaluate_performance compare_experiments generate_research_reports
+      - name: Verify research dashboard exists
+        run: test -f data/analytics/dashboard/index.html

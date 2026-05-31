@@ -1,0 +1,21 @@
+# CI / sample pipeline profile (GitHub Actions sets RUN_PROFILE=configs/run.ci.yaml)
+# Local live runs use configs/run.yaml instead.
+
+mode: demo
+
+market:
+  tickers: [AAPL, MSFT, XOM, GS, JPM]
+  use_rolling_window: false
+  rolling_days: 365
+
+portfolio:
+  weighting: equal
+  allow_shorts: false
+  max_gross_per_ticker: 0.5
+  position_sides: {}
+  manual_weights: {}
+  anchor_weights: {}
+  risk_free: 0.05
+
+research:
+  backtest_weight_source: max_sharpe

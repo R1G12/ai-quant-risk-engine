@@ -1,0 +1,11 @@
+required_columns:
+  paths_summary:
+    - path_id
+    - terminal_return
+    - max_drawdown
+  tail_metrics:
+    - confidence
+    - var
+    - cvar
+    - mean_return
+    - volatility

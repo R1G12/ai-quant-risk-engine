@@ -1,0 +1,8 @@
+name: risk_var
+required_columns:
+  - method
+  - confidence
+  - var
+optional_columns:
+  - scope
+  - timestamp

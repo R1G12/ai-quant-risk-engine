@@ -1,0 +1,9 @@
+name: risk_portfolio
+required_columns:
+  - timestamp
+  - portfolio_return
+optional_columns:
+  - cumulative_return
+  - rolling_sharpe
+  - rolling_vol
+  - drawdown

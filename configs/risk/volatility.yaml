@@ -1,0 +1,7 @@
+ewma_span: 21
+rolling_vol_window: 21
+long_vol_window: 63
+annualization_factor: 252
+regime_zscore_threshold: 1.5
+garch_p: 1
+garch_q: 1

@@ -1,0 +1,12 @@
+name: risk_volatility
+required_columns:
+  - timestamp
+  - scope
+  - rolling_vol
+  - ewma_vol
+  - vol_regime_flag
+optional_columns:
+  - ticker
+  - garch_vol
+  - year
+  - month

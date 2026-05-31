@@ -1,0 +1,12 @@
+name: sentiment_features
+required_columns:
+  - timestamp
+  - ticker
+  - sentiment
+  - confidence
+optional_columns:
+  - headline
+  - source
+  - embedding_id
+  - bullish_ratio
+  - article_count

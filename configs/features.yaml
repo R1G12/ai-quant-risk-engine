@@ -1,0 +1,9 @@
+volatility_window: 21
+sharpe_window: 63
+risk_free_rate: 0.05
+momentum_window: 12
+sma_windows:
+  - 10
+  - 20
+correlation_window: 30
+annualization_factor: 252

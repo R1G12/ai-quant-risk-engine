@@ -1,0 +1,78 @@
+# User-facing run profile (tickers, live/demo, portfolio weighting): configs/run.yaml
+# Apply with: aqre prepare && aqre run profile
+
+ingestion:
+  source: sample
+  seed: 42
+preprocessing:
+  seed: 42
+sentiment:
+  batch_size: 32
+  max_seq_length: 128
+  model_name: ProsusAI/finbert
+market:
+  source: sample
+  tickers:
+  - AAPL
+  - MSFT
+  - XOM
+  - GS
+  - JPM
+  # Rolling window: end=today, start=today-rolling_days (local dev).
+  # Set use_rolling_window: false or MARKET_PIN_DATES=1 to pin dates (CI).
+  use_rolling_window: true
+  rolling_days: 365
+  start_date: '2024-01-01'
+  end_date: '2024-03-31'
+  partition_freq: month
+  compression: zstd
+  default_sentiment_ticker: MARKET
+features:
+  volatility_window: 21
+  sharpe_window: 63
+  risk_free_rate: 0.05
+  momentum_window: 12
+  sma_windows:
+  - 10
+  - 20
+  correlation_window: 30
+  annualization_factor: 252
+risk:
+  hmm_n_regimes: 3
+  hmm_n_iter: 200
+  volatility:
+    ewma_span: 21
+    rolling_vol_window: 21
+    long_vol_window: 63
+  var:
+    confidence_levels:
+    - 0.95
+    - 0.99
+    n_simulations: 10000
+    seed: 42
+  portfolio:
+    benchmark_ticker: AAPL
+    weight_mode: equal
+    rolling_metrics_window: 63
+  optimization:
+    long_only: true
+    max_weight: 0.4
+    frontier_points: 25
+    shrinkage: ledoit_wolf
+research:
+  meta:
+    experiment_id: baseline
+    enable_dvc_experiments: true
+  simulation:
+    n_paths: 2000
+    horizon_days: 63
+    seed: 42
+    simulation_types:
+    - gbm
+    - multivariate
+    - regime_gbm
+  backtest:
+    tc_bps: 10.0
+    slippage_bps: 5.0
+    weight_source: max_sharpe
+  scenarios: {}

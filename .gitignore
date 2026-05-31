@@ -33,10 +33,15 @@ experiments/
 models/
 reports/*
 !reports/.gitkeep
+
+# DVC pipeline metrics (generated; do not commit)
 metrics/market_ingest/
 metrics/market_clean/
 metrics/features_*/
 metrics/risk_*/
+metrics/sentiment/
+metrics/research_*/
+metrics/platform/
 
 # Hugging Face cache (optional local override)
 .cache/

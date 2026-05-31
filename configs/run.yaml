@@ -1,0 +1,25 @@
+# Canonical run profile — edit this file to configure a full pipeline run.
+# Apply with: aqre prepare && aqre run profile
+# CI continues to use MARKET_SOURCE=sample via .github/workflows/ci.yml
+
+mode: live  # demo | live
+
+market:
+  tickers: [CVX, XLE, QQQ, GLD, GS, SPY, TLT, IWM, IBB, XLF, XLK, XLB, XLC, XLI, XLU, XLV, XLY, XLRE]
+  use_rolling_window: true
+  rolling_days: 365
+
+portfolio:
+  weighting: partial  # equal | manual | partial | optimised
+  allow_shorts: true
+  max_gross_per_ticker: 0.5
+  position_sides:
+    QQQ: short
+  manual_weights: {}
+  anchor_weights:
+    CVX: 0.2
+    GLD: 0.1
+  risk_free: 0.05
+
+research:
+  backtest_weight_source: max_sharpe

@@ -1,0 +1,11 @@
+name: market_features
+required_columns:
+  - timestamp
+  - ticker
+  - open
+  - high
+  - low
+  - close
+  - volume
+  - returns
+  - log_returns
