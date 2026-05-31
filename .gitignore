@@ -9,8 +9,10 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 
+.venv312
 .env
 .env.local
+.cache/
 
 logs/
 logs/**/*.log
