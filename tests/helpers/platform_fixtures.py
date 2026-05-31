@@ -170,6 +170,11 @@ def patch_paths_to_root(monkeypatch, root: Path) -> dict[str, float]:
         "RISK_PORTFOLIO_RETURNS_PATH": root / "data/risk/portfolio/portfolio_returns.parquet",
         "HOLDINGS_PATH": root / "data/raw/portfolio/holdings.parquet",
         "RESEARCH_BACKTESTS_DIR": root / "data/research/backtests",
+        "RESEARCH_SIMULATIONS_DIR": root / "data/research/simulations",
+        "RESEARCH_STRESS_DIR": root / "data/research/stress",
+        "RESEARCH_SCENARIOS_DIR": root / "data/research/scenarios",
+        "RISK_FRONTIER_PATH": root / "data/risk/frontier/frontier.parquet",
+        "RISK_VOLATILITY_DIR": root / "data/risk/volatility",
         "REPORTS_PORTFOLIO_DIR": root / "reports/portfolio",
         "REPORTS_RISK_DIR": root / "reports/risk",
         "REPORTS_GOVERNANCE_DIR": root / "reports/governance",
@@ -189,6 +194,7 @@ def patch_paths_to_root(monkeypatch, root: Path) -> dict[str, float]:
         "src.features.wide_returns",
         "src.simulation.pipeline._calibration",
         "src.analytics.dashboard_kpis",
+        "src.analytics.charts.registry",
     )
     for mod in modules_using_paths:
         for name, value in path_map.items():

@@ -17,6 +17,7 @@ def test_chart_registry_builds_without_error(tmp_path, monkeypatch) -> None:
     registry = build_chart_registry()
     assert len(registry) >= 10
     built = 0
+    skipped: list[str] = []
     ctx = ChartContext(app=app)
     for spec in registry:
         try:
@@ -25,7 +26,9 @@ def test_chart_registry_builds_without_error(tmp_path, monkeypatch) -> None:
             fig = None
         if fig is not None:
             built += 1
-    assert built >= 1
+        else:
+            skipped.append(spec.id)
+    assert built >= 1, f"No charts built; skipped: {skipped}"
 
 
 def test_assert_unique_timestamps_raises() -> None:
