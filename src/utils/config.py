@@ -266,6 +266,10 @@ def _default_run_profile_path() -> Path:
     env_path = os.getenv("RUN_PROFILE")
     if env_path:
         return Path(env_path)
+    if os.getenv("CI", "").lower() in ("1", "true", "yes"):
+        ci_path = CONFIGS_DIR / "run.ci.yaml"
+        if ci_path.is_file():
+            return ci_path
     return CONFIGS_DIR / "run.yaml"
 
 

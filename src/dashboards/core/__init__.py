@@ -1,5 +1,1 @@
-"""Shared dashboard utilities."""
-
-from src.dashboards.core.theme import apply_theme, page_header
-
-__all__ = ["apply_theme", "page_header"]
+"""Shared dashboard utilities (import submodules directly; no Streamlit at package import)."""

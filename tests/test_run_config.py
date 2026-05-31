@@ -66,6 +66,14 @@ def test_load_app_config_merges_run_profile(run_yaml: Path, monkeypatch: pytest.
     assert app.market.source == "yfinance"
 
 
+def test_default_run_profile_uses_ci_yaml_when_ci_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    from src.utils.config import _default_run_profile_path
+
+    monkeypatch.delenv("RUN_PROFILE", raising=False)
+    monkeypatch.setenv("CI", "true")
+    assert _default_run_profile_path().name == "run.ci.yaml"
+
+
 def test_prepare_uses_run_mode_not_stale_market_source(
     run_yaml: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:

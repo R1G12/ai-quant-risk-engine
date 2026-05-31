@@ -30,6 +30,8 @@ aqre run profile --dashboard
 
 - **tickers**: universe for ingest, features, risk, and research.
 - **Validation**: `aqre prepare` and market ingest **skip** symbols with no data (unknown/delisted). Warnings list skipped tickers; holdings and the manifest only include valid symbols. Sample mode never invents synthetic prices for missing tickers.
+
+**CI** uses [`configs/run.ci.yaml`](../configs/run.ci.yaml) (`RUN_PROFILE` / `CI=true`) with sample-compatible tickers; local runs use [`configs/run.yaml`](../configs/run.yaml).
 - **use_rolling_window** / **rolling_days**: end date = today, start = today − rolling_days (unless `MARKET_PIN_DATES=1`).
 
 ## `portfolio`

@@ -44,6 +44,7 @@ stages:
     - src/utils/
     - configs/
     - configs/run.yaml
+    - configs/run.ci.yaml
     params:
     - market.source
     - market.tickers

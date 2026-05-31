@@ -12,6 +12,7 @@ jobs:
     env:
       MARKET_SOURCE: sample
       MARKET_PIN_DATES: "1"
+      RUN_PROFILE: configs/run.ci.yaml
 
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +24,7 @@ jobs:
           cache: pip
 
       - name: Install package
-        run: pip install -e ".[dev,risk,research]"
+        run: pip install -e ".[dev,market,risk,research,dashboard]"
 
       - name: Run pytest
         run: pytest -q
