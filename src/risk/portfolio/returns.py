@@ -14,6 +14,12 @@ def build_portfolio_returns(app: AppConfig) -> pl.DataFrame:
     weights = load_weights(app)
     tickers = list(weights.keys())
     wide = load_returns_wide(tickers)
+    if wide.is_empty():
+        raise ValueError(
+            f"No return rows for portfolio holdings {tickers}. "
+            "Ensure merge_features completed and holdings tickers match market data "
+            "(re-run aqre prepare or delete stale data/raw/portfolio/holdings.parquet)."
+        )
 
     port = pl.lit(0.0)
     for ticker, w in weights.items():

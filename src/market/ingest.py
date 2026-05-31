@@ -28,6 +28,9 @@ def ingest_market_data(output_dir: Path | None = None) -> Path:
 
     LOGGER.info("Ingesting market data", extra={"source": cfg.source})
 
+    if cfg.source != "yfinance":
+        ensure_external_sample_written(cfg)
+
     filter_result = validate_market_tickers(cfg.tickers, cfg.source)
     for line in format_skip_messages(filter_result):
         LOGGER.warning(line)
@@ -42,7 +45,6 @@ def ingest_market_data(output_dir: Path | None = None) -> Path:
     if cfg.source == "yfinance":
         lf = load_yfinance_market(cfg)
     else:
-        ensure_external_sample_written(cfg)
         lf = load_sample_market(cfg)
 
     raw_path = out / "market_raw.parquet"

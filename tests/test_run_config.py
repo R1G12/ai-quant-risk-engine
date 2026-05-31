@@ -75,10 +75,11 @@ def test_default_run_profile_uses_ci_yaml_when_ci_env(monkeypatch: pytest.Monkey
 
 
 def test_prepare_uses_run_mode_not_stale_market_source(
-    run_yaml: Path, monkeypatch: pytest.MonkeyPatch,
+    run_yaml: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """prepare validates via run.mode even when MARKET_SOURCE=sample is set in shell."""
     monkeypatch.setenv("MARKET_SOURCE", "sample")
+    monkeypatch.setattr("src.portfolio.prepare.PROJECT_ROOT", tmp_path)
     calls: list[str] = []
 
     def _capture(tickers: list[str], source: str):
@@ -95,6 +96,7 @@ def test_prepare_uses_run_mode_not_stale_market_source(
     assert run is not None
     apply_run_profile_env(run, force=True)
     app = load_app_config(run_yaml)
+    app.risk.portfolio.holdings_path = str(tmp_path / "holdings.parquet")
     materialize_run(app)
     assert calls == ["yfinance"]
     assert app.market.source == "yfinance"

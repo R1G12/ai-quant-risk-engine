@@ -12,7 +12,11 @@ from src.utils.paths import RISK_DATASET_PATH
 def returns_long_to_wide(long: pl.DataFrame, tickers: list[str]) -> pl.DataFrame:
     """Pivot ticker returns to wide format with timestamp deduplication."""
     if long.is_empty():
-        return pl.DataFrame({"timestamp": []})
+        return pl.DataFrame(
+            schema={
+                "timestamp": pl.Datetime(time_unit="us", time_zone="UTC"),
+            }
+        )
 
     long = long.group_by(["timestamp", "ticker"]).agg(pl.col("returns").mean())
     wide = long.pivot(on="ticker", index="timestamp", values="returns").sort("timestamp")
