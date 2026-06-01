@@ -8,13 +8,16 @@ import numpy as np
 import polars as pl
 
 from src.features.wide_returns import load_returns_wide
-from src.risk.correlations.covariance import ledoit_wolf_shrinkage, sample_covariance_matrix
-from src.risk.optimization.constraints import PortfolioConstraints
+from src.portfolio.expected_returns import build_expected_returns
+from src.portfolio.sentiment_sides import effective_position_sides, finbert_scores_by_ticker
+from src.portfolio.sentiment_tilt import apply_sentiment_magnitude_tilt
 from src.portfolio.weights import (
     optimize_max_sharpe_gross,
     optimize_partial_weights,
     resolve_weights,
 )
+from src.risk.correlations.covariance import ledoit_wolf_shrinkage, sample_covariance_matrix
+from src.risk.optimization.constraints import PortfolioConstraints
 from src.risk.optimization.markowitz import max_sharpe_weights, min_variance_weights, portfolio_stats
 from src.risk.pipeline._io import write_single_parquet
 from src.risk.portfolio.holdings import load_weights
@@ -24,7 +27,6 @@ from src.utils.logger import get_logger
 from src.utils.metrics import log_stage_metrics
 from src.utils.paths import (
     METRICS_DIR,
-    RISK_DATASET_PATH,
     RISK_OPT_METADATA_PATH,
     RISK_OPT_WEIGHTS_PATH,
     RISK_OPTIMIZATION_DIR,
@@ -34,39 +36,18 @@ from src.utils.paths import (
 LOGGER = get_logger(__name__)
 
 
-def _mean_returns_with_sentiment(app, tickers: list[str]) -> np.ndarray:
-    df = (
-        pl.scan_parquet(RISK_DATASET_PATH)
-        .filter(pl.col("ticker").is_in(tickers))
-        .group_by("ticker")
-        .agg(
-            pl.col("returns").mean().alias("mu"),
-            pl.col("bullish_ratio").mean().alias("sent"),
-        )
-        .collect()
-    )
-    scale = app.risk.portfolio.sentiment_return_scale
-    mus = []
-    for t in tickers:
-        row = df.filter(pl.col("ticker") == t)
-        if row.height == 0:
-            mus.append(0.0)
-            continue
-        mu = float(row["mu"][0])
-        if app.risk.optimization.use_sentiment_adjustment and row["sent"][0] is not None:
-            mu += scale * (float(row["sent"][0]) - 0.5)
-        mus.append(mu)
-    return np.array(mus)
-
-
-def _run_portfolio_kw(app) -> dict:
+def _run_portfolio_kw(app, tickers: list[str]) -> dict:
     opt = app.risk.optimization
     if app.run is not None:
         p = app.run.portfolio
+        sides = effective_position_sides(app, tickers)
+        if sides is None:
+            sides = {k: v for k, v in (p.position_sides or {}).items() if k in tickers} or None
         return {
             "allow_shorts": p.allow_shorts,
             "max_gross_per_ticker": p.max_gross_per_ticker,
-            "position_sides": p.position_sides or None,
+            "min_gross_divisor": p.min_gross_divisor,
+            "position_sides": sides,
             "manual_weights": p.manual_weights or None,
             "anchor_weights": p.anchor_weights or None,
             "risk_free": p.risk_free,
@@ -74,11 +55,35 @@ def _run_portfolio_kw(app) -> dict:
     return {
         "allow_shorts": opt.allow_shorts,
         "max_gross_per_ticker": opt.max_gross_per_ticker,
+        "min_gross_divisor": 5.0,
         "position_sides": None,
         "manual_weights": None,
         "anchor_weights": None,
         "risk_free": app.features.risk_free_rate,
     }
+
+
+def _maybe_apply_tilt(app, tickers: list[str], w: np.ndarray, kw: dict) -> tuple[np.ndarray, bool]:
+    opt = app.risk.optimization
+    weighting = opt.weighting
+    if app.run is None or weighting not in ("optimised", "partial"):
+        return w, False
+    port = app.run.portfolio
+    if not port.sentiment_magnitude_tilt:
+        return w, False
+    scores = finbert_scores_by_ticker(app, tickers, window_days=port.sentiment_sides_window_days)
+    w2 = apply_sentiment_magnitude_tilt(
+        w,
+        tickers,
+        scores,
+        beta=port.sentiment_tilt_beta,
+        cap=port.sentiment_tilt_cap,
+        allow_shorts=kw["allow_shorts"],
+        max_gross_per_ticker=kw["max_gross_per_ticker"],
+        min_gross_divisor=kw["min_gross_divisor"],
+        position_sides=kw["position_sides"],
+    )
+    return w2, True
 
 
 def _max_sharpe_weights(
@@ -87,22 +92,25 @@ def _max_sharpe_weights(
     mean_r: np.ndarray,
     cov: np.ndarray,
     cons: PortfolioConstraints,
-) -> tuple[np.ndarray, bool]:
+) -> tuple[np.ndarray, bool, bool]:
     opt = app.risk.optimization
     weighting = opt.weighting
-    kw = _run_portfolio_kw(app)
+    kw = _run_portfolio_kw(app, tickers)
 
     if weighting == "optimised":
-        return optimize_max_sharpe_gross(
+        w, ok = optimize_max_sharpe_gross(
             mean_r,
             cov,
             risk_free=kw["risk_free"],
             allow_shorts=kw["allow_shorts"],
             max_gross_per_ticker=kw["max_gross_per_ticker"],
+            min_gross_divisor=kw["min_gross_divisor"],
         )
+        w, tilted = _maybe_apply_tilt(app, tickers, w, kw)
+        return w, ok, tilted
 
     if weighting == "partial":
-        return optimize_partial_weights(
+        w, ok = optimize_partial_weights(
             mean_r,
             cov,
             tickers,
@@ -110,15 +118,18 @@ def _max_sharpe_weights(
             risk_free=kw["risk_free"],
             allow_shorts=kw["allow_shorts"],
             max_gross_per_ticker=kw["max_gross_per_ticker"],
+            min_gross_divisor=kw["min_gross_divisor"],
             position_sides=kw["position_sides"],
         )
+        w, tilted = _maybe_apply_tilt(app, tickers, w, kw)
+        return w, ok, tilted
 
     if weighting in ("equal", "manual"):
         w = resolve_weights(weighting, tickers, **kw)
-        return w, True
+        return w, True, False
 
     w, converged = max_sharpe_weights(mean_r, cov, cons, risk_free=app.features.risk_free_rate)
-    return w, converged
+    return w, converged, False
 
 
 def run() -> None:
@@ -133,7 +144,7 @@ def run() -> None:
     if app.risk.optimization.shrinkage == "ledoit_wolf":
         cov = ledoit_wolf_shrinkage(cov)
 
-    mean_r = _mean_returns_with_sentiment(app, tickers)
+    mean_r, mu_meta = build_expected_returns(app, tickers)
     opt_cfg = app.risk.optimization
     cons = PortfolioConstraints(
         long_only=opt_cfg.long_only,
@@ -143,7 +154,7 @@ def run() -> None:
     )
 
     w_min = min_variance_weights(cov, cons, len(tickers))
-    w_sharpe, converged = _max_sharpe_weights(app, tickers, mean_r, cov, cons)
+    w_sharpe, converged, tilt_applied = _max_sharpe_weights(app, tickers, mean_r, cov, cons)
 
     weight_rows = []
     stat_rows = []
@@ -170,6 +181,8 @@ def run() -> None:
         "shrinkage": opt_cfg.shrinkage,
         "tickers": tickers,
         "weighting": opt_cfg.weighting,
+        "tilt_applied": tilt_applied,
+        **mu_meta,
     }
     RISK_OPT_METADATA_PATH.parent.mkdir(parents=True, exist_ok=True)
     with RISK_OPT_METADATA_PATH.open("w", encoding="utf-8") as f:

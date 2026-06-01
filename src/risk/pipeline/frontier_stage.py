@@ -7,7 +7,7 @@ from src.risk.correlations.covariance import ledoit_wolf_shrinkage, sample_covar
 from src.risk.optimization.constraints import PortfolioConstraints
 from src.risk.optimization.frontier import efficient_frontier
 from src.risk.pipeline._io import write_single_parquet
-from src.risk.pipeline.optimization_stage import _mean_returns_with_sentiment
+from src.portfolio.expected_returns import build_expected_returns
 from src.risk.portfolio.holdings import load_weights
 from src.utils.config import load_app_config
 from src.utils.logger import get_logger
@@ -28,7 +28,7 @@ def run() -> None:
     cov = sample_covariance_matrix(wide, tickers)
     if app.risk.optimization.shrinkage == "ledoit_wolf":
         cov = ledoit_wolf_shrinkage(cov)
-    mean_r = _mean_returns_with_sentiment(app, tickers)
+    mean_r, _ = build_expected_returns(app, tickers)
 
     opt = app.risk.optimization
     long_only = opt.long_only
