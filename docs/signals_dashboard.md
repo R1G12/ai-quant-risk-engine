@@ -20,6 +20,8 @@ The legacy chart explorer (`aqre dashboard --legacy` → `src/analytics/streamli
 |--------------|--------------------------|----------------------|
 | FinBERT scores | `data/processed/sentiment.parquet` | `ingest` → `preprocess` → `sentiment` |
 | Trailing stops | Same + holdings tickers in `configs/run.yaml` | As above |
+
+**News ingest:** `mode: live` sets `NEWS_SOURCE=yfinance` (20–60 headlines per ticker, last 30 days, written to `data/raw/news.parquet`). `mode: demo` / CI uses `sample` news. Install market extras for Yahoo: `pip install -e ".[market]"`.
 | HMM regime | `data/risk/portfolio/regimes.parquet` | `generate_portfolio_metrics` |
 | VaR 95% | `data/risk/var/var_metrics.parquet` (or research performance summary) | `generate_var_metrics` |
 
@@ -37,9 +39,8 @@ Three tabs:
 ### FinBERT
 
 - **30-day window** of FinBERT-labelled news, aggregated per holding ticker.
-- **Sentiment score** (per ticker):  
-  `mean(positive labels) − mean(negative labels)`  
-  on rows mapped from news `source` → ticker via [`configs/sentiment_map.yaml`](../configs/sentiment_map.yaml).
+- **Ticker mapping:** uses the `ticker` column when present (yfinance ingest); otherwise `source` → ticker via [`configs/sentiment_map.yaml`](../configs/sentiment_map.yaml) (sample news).
+- **Sentiment score** (per ticker): `mean(positive labels) − mean(negative labels)`.
 - **Visuals**: bar chart of scores; table (`bullish_ratio`, `negative_ratio`, `article_count`, `avg_confidence`); optional daily line chart for one ticker.
 
 ### Trailing stops
@@ -59,9 +60,11 @@ Each tranche exits **⅓** of the remaining position when breached (see `simulat
 
 ### Regime & VaR
 
-- **Current HMM regime**: latest `regime_label` from `data/risk/portfolio/regimes.parquet` (Gaussian HMM on portfolio returns).
+- **Current HMM regime**: latest `regime_label` from `data/risk/portfolio/regimes.parquet` (Gaussian HMM on portfolio returns; labels `low` / `mid` / `high` by mean return).
 - **Portfolio VaR 95%**: same metric as the platform home KPI (`compute_window_kpis` in `src/analytics/dashboard_kpis.py`).
-- **Visual**: regime history (last 120 observations).
+- **Visual**: regime history (**last 365 observations**), y-axis always shows all three HMM labels, plus a **days per regime** table under the chart.
+
+**Link to portfolio weights:** the same 30d FinBERT score is used for (1) **long/short sign** when `sentiment_position_sides` is enabled, (2) **blended expected returns** at optimize time, (3) optional **magnitude tilt** after max-Sharpe. Latest HMM regime scales sentiment influence via `regime_sentiment_mix`. Details: [run_profile.md](run_profile.md#sentiment-in-optimization), [portfolio_dashboard.md](portfolio_dashboard.md).
 
 ## Code map
 
@@ -69,9 +72,11 @@ Each tranche exits **⅓** of the remaining position when breached (see `simulat
 |-------|------|
 | Streamlit page | `src/dashboards/pages/7_Signals.py` |
 | Data loaders | `src/dashboards/core/signals_loaders.py` |
+| FinBERT scores + sides | `src/portfolio/sentiment_sides.py` |
+| Blended μ / regime / tilt | `src/portfolio/expected_returns.py`, `regime_policy.py`, `sentiment_tilt.py` |
 | Stop policy | `src/portfolio/stops.py` |
 | Re-exports | `src/dashboards/core/loaders.py` (`load_signals_finbert`, `load_signals_regime`) |
-| Tests | `tests/test_portfolio_stops.py`, `tests/test_signals_loaders.py` |
+| Tests | `tests/test_portfolio_stops.py`, `tests/test_signals_loaders.py`, `tests/test_signals_regime_chart.py` |
 
 ## Sentiment → ticker mapping
 
@@ -93,6 +98,7 @@ Edit constants in `src/portfolio/stops.py` or call `build_stops(score, use_manua
 ## Related docs
 
 - [Run profile](run_profile.md) — tickers and holdings
+- [Portfolio dashboard](portfolio_dashboard.md) — effective weights in the UI by `weighting` mode
 - [Portfolio theory](portfolio_theory.md) — weighting and optimization
 - [Risk models](risk_models.md) — VaR and HMM regimes
 - [System architecture](system_architecture.md) — Phase 5 layers

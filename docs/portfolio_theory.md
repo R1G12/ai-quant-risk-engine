@@ -28,3 +28,7 @@ Optimization methods in `src/risk/optimization/`:
 ## Constraints
 
 Merged from run profile into `configs/risk/optimization.yaml` at load time: `allow_shorts`, `max_gross_per_ticker`, long-only flags, and legacy max weight caps.
+
+**Minimum gross per name:** `|w_i| ≥ 1 / (min_gross_divisor × n)` (default divisor `5`), enforced in `src/portfolio/weights.py` for `equal`, `manual`, `optimised`, and `partial`.
+
+**Long/short sign (FinBERT):** when `sentiment_position_sides` is enabled (default), tickers without an explicit `position_sides` entry get `short` if their 30d FinBERT score ≤ −0.3 and `long` if ≥ +0.3. Signs are merged in `aqre prepare` and `optimize_portfolios` via `effective_position_sides()` in `src/portfolio/sentiment_sides.py`.

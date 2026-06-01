@@ -89,7 +89,8 @@ flowchart TB
 
 ### Phase 5
 - Multi-page Streamlit platform, copilot, FastAPI, monitoring, governance reports (`aqre dashboard`, `aqre copilot`, `aqre api`)
-- **Signals** sidebar page: FinBERT scores (30d), 3-tranche trailing stops, HMM regime, VaR 95% — see [docs/signals_dashboard.md](docs/signals_dashboard.md)
+- **Signals** sidebar page: FinBERT scores (30d), 3-tranche trailing stops, HMM regime (365d chart), VaR 95% — see [docs/signals_dashboard.md](docs/signals_dashboard.md)
+- **Portfolio** page + sentiment-aware optimization (min gross, FinBERT sides, blended μ) — [docs/portfolio_dashboard.md](docs/portfolio_dashboard.md), [docs/run_profile.md](docs/run_profile.md)
 - **Tracker** sidebar page: Excel trade ledger, optimal-weight vs actual comparison, performance chart — see [docs/portfolio_tracker.md](docs/portfolio_tracker.md); `aqre tracker ingest`
 
 ## Project structure
@@ -272,7 +273,7 @@ aqre dashboard --legacy     # Phase 4 chart explorer
 | `RUN_PROFILE` | Path to run YAML (CI: `configs/run.ci.yaml`) |
 | `MARKET_SOURCE` | `sample` or `yfinance` (plain `dvc repro`; profile commands override when using `aqre run profile`) |
 | `MARKET_PIN_DATES` | `1` = use pinned `start_date` / `end_date` (CI) |
-| `NEWS_SOURCE` | `sample` (default for news ingest) |
+| `NEWS_SOURCE` | `sample` or `yfinance` (`aqre run profile` sets from `mode`; live needs `pip install -e ".[market]"`) |
 
 Holdings under `data/raw/portfolio/holdings.parquet` are refreshed automatically when tickers no longer match the active profile (e.g. after switching from local `run.yaml` to CI tickers).
 

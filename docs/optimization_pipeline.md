@@ -47,3 +47,17 @@ dvc repro optimize_portfolios generate_efficient_frontier
 Holdings must match active market tickers. If you change `configs/run.yaml` or merge branches with different tickers, run `aqre prepare` or let `ensure_holdings()` refresh stale `holdings.parquet` on the next risk stage.
 
 Install risk extras: `pip install -e ".[dev,risk]"`
+
+## Optimization metadata
+
+After `optimize_portfolios`, `data/risk/optimization/_metadata.json` may include:
+
+| Field | Meaning |
+|-------|---------|
+| `mu_mode` | `vol_scaled` or `fixed` for sentiment μ leg |
+| `regime` | Latest HMM label (`low` / `mid` / `high`) when blend enabled |
+| `alpha_eff` | Effective sentiment blend weight after regime multiplier |
+| `beta_eff` | Tilt strength when magnitude tilt applied |
+| `tilt_applied` | Whether post-opt sentiment tilt ran |
+
+See [run_profile.md](run_profile.md#sentiment-in-optimization) and [portfolio_dashboard.md](portfolio_dashboard.md).

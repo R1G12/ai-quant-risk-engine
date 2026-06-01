@@ -22,9 +22,9 @@ aqre run profile --dashboard
 | Value | Market data | News ingestion |
 |-------|-------------|----------------|
 | `demo` | `sample` (local synthetic) | `sample` |
-| `live` | `yfinance` | `sample` (real news adapter is Phase 5 backlog) |
+| `live` | `yfinance` | `yfinance` |
 
-`aqre prepare` and `aqre run profile` set `MARKET_SOURCE` from `mode` (ignores a leftover `MARKET_SOURCE=sample` in the shell). Plain `dvc repro` still respects `MARKET_SOURCE` for CI.
+`aqre prepare` and `aqre run profile` set `MARKET_SOURCE` and `NEWS_SOURCE` from `mode` (ignores leftover shell overrides when using `--force` / profile commands). Plain `dvc repro` still respects `MARKET_SOURCE` and `NEWS_SOURCE` for CI.
 
 ## `market`
 
@@ -42,9 +42,30 @@ aqre run profile --dashboard
   - `partial` — fix `anchor_weights`, optimize free tickers at Phase 3.
   - `optimised` — max-Sharpe on gross budget with optional shorts.
 - **allow_shorts** / **max_gross_per_ticker**: gross-budget constraints (notebook-style).
-- **position_sides**: force sign per ticker, e.g. `QQQ: short`.
+- **position_sides**: force sign per ticker, e.g. `QQQ: short` (overrides FinBERT inference).
+- **min_gross_divisor** (default `5`): minimum gross per name is `1 / (divisor × n_tickers)` during optimization.
 - **anchor_weights**: used when `weighting: partial`; sum(|anchors|) must be &lt; 1.
 - **risk_free**: annual rate for optimization Sharpe.
+
+## FinBERT position sides
+
+- **sentiment_position_sides** (default `true`): for tickers **not** in `position_sides`, set `short` when 30d FinBERT score ≤ −0.3 and `long` when ≥ +0.3 (same bands as trailing stops). Requires `allow_shorts: true` and `data/processed/sentiment.parquet`.
+- **sentiment_sides_window_days** (default `30`): lookback for inference (matches Signals dashboard).
+
+## Sentiment in optimization
+
+Blended expected returns and optional tilt use the same FinBERT scores as Signals:
+
+- **sentiment_mu_blend** (default `0.3`): weight α on sentiment-based μ vs historical μ.
+- **sentiment_mu_mode**: `vol_scaled` (scale by |historical return|) or `fixed`.
+- **sentiment_mu_scale**: scale factor for sentiment μ leg.
+- **regime_sentiment_mix**: multipliers by latest HMM label (`low` / `mid` / `high`) on α — see `data/risk/portfolio/regimes.parquet`.
+- **sentiment_magnitude_tilt** (default `true`): post max-Sharpe z-score tilt on weight magnitudes (`sentiment_tilt_beta`, `sentiment_tilt_cap`).
+- **use_legacy_bullish_mu**: if `true`, use old `bullish_ratio` nudge instead of blend.
+
+Optimization metadata (`data/risk/optimization/_metadata.json`) records `mu_mode`, `regime`, `alpha_eff`, `tilt_applied`.
+
+**CI** ([`configs/run.ci.yaml`](../configs/run.ci.yaml)) sets `sentiment_position_sides: false`, `sentiment_mu_blend: 0`, `sentiment_magnitude_tilt: false` for reproducibility.
 
 `aqre prepare` writes `data/raw/portfolio/holdings.parquet` and `data/run_manifest.json`.
 
