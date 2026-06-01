@@ -6,45 +6,16 @@ from datetime import date, timedelta
 
 import polars as pl
 
+from src.portfolio.sentiment_sides import load_finbert_window as _load_finbert_window
+from src.portfolio.sentiment_sides import map_sentiment_dataframe
 from src.portfolio.stops import TrailingStopSet, trailing_stop_set
 from src.risk.portfolio.holdings import load_weights
 from src.utils.config import AppConfig
 from src.utils.paths import PROCESSED_SENTIMENT_PATH, RISK_REGIMES_PATH
 
-
-def _map_sentiment_to_tickers(df: pl.DataFrame, app: AppConfig) -> pl.DataFrame:
-    """Map news rows to tickers using sentiment_map (same rules as feature stage)."""
-    mapping = app.sentiment_map.get("source_to_ticker", {}) or {}
-    default = app.sentiment_map.get(
-        "default_ticker",
-        app.market.default_sentiment_ticker,
-    )
-
-    ticker_expr = pl.lit(str(default))
-    for source, ticker in mapping.items():
-        ticker_expr = (
-            pl.when(pl.col("source") == source)
-            .then(pl.lit(str(ticker)))
-            .otherwise(ticker_expr)
-        )
-
-    date_col = df.schema.get("date")
-    if date_col == pl.Date:
-        ts = pl.col("date").cast(pl.Datetime(time_unit="us", time_zone="UTC"))
-    elif date_col == pl.Datetime(time_unit="us", time_zone="UTC") or str(date_col).startswith("Datetime"):
-        ts = pl.col("date")
-    else:
-        ts = pl.col("date").str.to_datetime(time_zone="UTC", strict=False)
-
-    return df.with_columns(ts.alias("timestamp"), ticker_expr.alias("ticker"))
-
-
-def _label_flags(lf: pl.LazyFrame) -> pl.LazyFrame:
-    label = pl.col("sentiment_label").str.to_lowercase()
-    return lf.with_columns(
-        (label == "positive").cast(pl.Float64).alias("is_positive"),
-        (label == "negative").cast(pl.Float64).alias("is_negative"),
-    )
+# Gaussian HMM labels from src.risk.regimes.hmm (mean-return ordering).
+HMM_REGIME_LABELS: tuple[str, ...] = ("low", "mid", "high")
+REGIME_HISTORY_OBS = 365
 
 
 def load_finbert_window(
@@ -53,65 +24,87 @@ def load_finbert_window(
     window_days: int = 30,
     tickers: list[str] | None = None,
 ) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
-    """Load per-ticker summary and daily scores over the last ``window_days``.
+    """Delegate to shared portfolio sentiment loader."""
+    return _load_finbert_window(app, window_days=window_days, tickers=tickers)
 
-    Returns (summary_df, daily_df). Either may be None if sentiment file missing/empty.
-    summary columns: ticker, sentiment_score, bullish_ratio, negative_ratio, article_count,
-    avg_confidence
-    """
+
+def finbert_empty_reason(app: AppConfig, *, window_days: int = 30) -> tuple[str, list[str]]:
+    """Explain why FinBERT summary is empty (for Signals UI)."""
     if not PROCESSED_SENTIMENT_PATH.is_file():
-        return None, None
+        return (
+            "Sentiment file missing. Run: `dvc repro ingest preprocess sentiment`",
+            [],
+        )
 
     raw = pl.read_parquet(PROCESSED_SENTIMENT_PATH)
     if raw.is_empty() or "sentiment_label" not in raw.columns:
-        return None, None
+        return (
+            "Sentiment file is empty or missing FinBERT labels. Re-run the sentiment stage.",
+            [],
+        )
 
-    mapped = _map_sentiment_to_tickers(raw, app)
+    mapped = map_sentiment_dataframe(raw, app)
+    universe = list(load_weights(app).keys())
+    if not universe:
+        return ("No holdings tickers in the active run profile.", [])
+
     max_ts = mapped["timestamp"].max()
     if max_ts is None:
-        return None, None
+        return ("No timestamps in sentiment data.", universe)
+
     end = max_ts.date() if hasattr(max_ts, "date") else date.today()
     start = end - timedelta(days=window_days)
-
-    universe = tickers if tickers is not None else list(load_weights(app).keys())
-    lf = (
-        mapped.lazy()
-        .filter(pl.col("ticker").is_in(universe))
-        .filter(pl.col("timestamp").dt.date() >= start)
-        .pipe(_label_flags)
-        .rename({"sentiment_score": "finbert_confidence"})
+    in_window = mapped.filter(
+        (pl.col("timestamp").dt.date() >= start) & (pl.col("timestamp").dt.date() <= end)
     )
+    in_universe = in_window.filter(pl.col("ticker").is_in(universe))
+    if in_universe.height > 0:
+        return ("", [])
 
-    daily = (
-        lf.with_columns(pl.col("timestamp").dt.date().alias("day"))
-        .group_by(["day", "ticker"])
-        .agg(
-            (pl.col("is_positive").mean() - pl.col("is_negative").mean()).alias("sentiment_score"),
-            pl.col("is_positive").mean().alias("bullish_ratio"),
-            pl.col("is_negative").mean().alias("negative_ratio"),
-            pl.len().alias("article_count"),
-            pl.col("finbert_confidence").mean().alias("avg_confidence"),
+    tickers_in_data = set(mapped["ticker"].unique().to_list())
+    missing = [t for t in universe if t not in tickers_in_data]
+    if missing and in_window.height == 0:
+        return (
+            f"No FinBERT articles in the last {window_days}d for any ticker. "
+            "Re-run ingest with `NEWS_SOURCE=yfinance` in live mode.",
+            missing,
         )
-        .with_columns(pl.col("day").cast(pl.Datetime(time_unit="us", time_zone="UTC")).alias("timestamp"))
-        .sort(["ticker", "timestamp"])
-        .collect()
+    return (
+        f"No articles in the last {window_days}d for holdings tickers "
+        f"({', '.join(universe)}). Mapped sentiment tickers: {sorted(tickers_in_data)}.",
+        missing,
     )
 
-    if daily.is_empty():
-        return None, None
 
-    summary = (
-        daily.group_by("ticker")
-        .agg(
-            pl.col("sentiment_score").mean().alias("sentiment_score"),
-            pl.col("bullish_ratio").mean().alias("bullish_ratio"),
-            pl.col("negative_ratio").mean().alias("negative_ratio"),
-            pl.col("article_count").sum().alias("article_count"),
-            pl.col("avg_confidence").mean().alias("avg_confidence"),
-        )
-        .sort("sentiment_score", descending=True)
+def regime_history_window(df: pl.DataFrame, n_obs: int = REGIME_HISTORY_OBS) -> pl.DataFrame:
+    """Last ``n_obs`` rows of regime history."""
+    if df.is_empty():
+        return df
+    return df.tail(n_obs)
+
+
+def regimes_missing_in_window(win: pl.DataFrame) -> list[str]:
+    """HMM labels with zero days in the window (axis still shows all three)."""
+    if win.is_empty() or "regime_label" not in win.columns:
+        return list(HMM_REGIME_LABELS)
+    present = set(win["regime_label"].unique().to_list())
+    return [lbl for lbl in HMM_REGIME_LABELS if lbl not in present]
+
+
+def regime_day_counts(win: pl.DataFrame) -> pl.DataFrame:
+    """Count trading days per regime label in the window."""
+    if win.is_empty() or "regime_label" not in win.columns:
+        return pl.DataFrame({"regime_label": list(HMM_REGIME_LABELS), "days": [0, 0, 0]})
+    counts = (
+        win.group_by("regime_label")
+        .agg(pl.len().alias("days"))
+        .sort("regime_label")
     )
-    return summary, daily
+    rows = []
+    count_map = {str(r["regime_label"]): int(r["days"]) for r in counts.iter_rows(named=True)}
+    for lbl in HMM_REGIME_LABELS:
+        rows.append({"regime_label": lbl, "days": count_map.get(lbl, 0)})
+    return pl.DataFrame(rows)
 
 
 def load_trailing_stops_table(summary: pl.DataFrame) -> pl.DataFrame:
