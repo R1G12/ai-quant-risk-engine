@@ -77,6 +77,18 @@ Do not add pandas imports to `src/` unless explicitly migrating a notebook modul
 - **pyyaml** – configuration
 - **pytest** – tests (mock HF pipeline in unit tests)
 
+## Signals / portfolio — do not regress
+
+Restored features are tracked in [reimplementation_backlog.md](reimplementation_backlog.md).
+
+- **Single source** for 30d FinBERT scores: `src/portfolio/sentiment_sides.py` (dashboard loaders wrap it).
+- Avoid full-file `Write` on `signals_loaders.py` or `optimization_stage.py` without running the backlog regression pytest bundle.
+- After edits to Signals or optimization, run:
+
+```powershell
+.\.venv312\Scripts\pytest.exe tests/test_signals_regime_chart.py tests/test_min_gross_weights.py tests/test_sentiment_position_sides.py tests/test_expected_returns.py tests/test_regime_policy.py tests/test_sentiment_tilt.py tests/test_signals_loaders.py tests/test_optimization_run_profile.py -q
+```
+
 ## Rules for agents
 
 1. Read `docs/architecture.md` before large refactors
