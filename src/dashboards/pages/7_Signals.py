@@ -9,9 +9,15 @@ import streamlit as st
 
 from src.dashboards.core.loaders import load_app, load_kpis
 from src.dashboards.core.signals_loaders import (
+    HMM_REGIME_LABELS,
+    REGIME_HISTORY_OBS,
+    finbert_empty_reason,
     load_finbert_window,
     load_latest_regime,
     load_trailing_stops_table,
+    regime_day_counts,
+    regime_history_window,
+    regimes_missing_in_window,
 )
 from src.dashboards.core.theme import apply_theme, page_header
 
@@ -35,10 +41,10 @@ tab_finbert, tab_stops, tab_risk = st.tabs(["FinBERT", "Trailing stops", "Regime
 
 with tab_finbert:
     if summary is None:
-        st.warning(
-            "No FinBERT sentiment data found. Run Phase 1: "
-            "`dvc repro ingest preprocess sentiment`"
-        )
+        reason, missing_tickers = finbert_empty_reason(app, window_days=30)
+        st.warning(reason or "No FinBERT sentiment data for the current holdings.")
+        if missing_tickers:
+            st.caption(f"Tickers with no mapped articles: {', '.join(missing_tickers)}")
     else:
         fig = px.bar(
             summary.to_pandas(),
@@ -155,15 +161,24 @@ with tab_risk:
     if regime_label is None:
         st.info("Run Phase 3 portfolio metrics: `dvc repro generate_portfolio_metrics`")
     elif regimes_df is not None and regimes_df.height > 1:
-        tail = regimes_df.tail(120)
+        win = regime_history_window(regimes_df, n_obs=REGIME_HISTORY_OBS)
         reg_plot = px.scatter(
-            tail.to_pandas(),
+            win.to_pandas(),
             x="timestamp",
             y="regime_label",
-            title="HMM regime history (last 120 observations)",
+            title=f"HMM regime history (last {REGIME_HISTORY_OBS} observations)",
+            category_orders={"regime_label": list(HMM_REGIME_LABELS)},
         )
         reg_plot.update_layout(template="plotly_dark", height=320)
         st.plotly_chart(reg_plot, width="stretch")
+        missing = regimes_missing_in_window(win)
+        if missing:
+            st.caption(
+                f"No days assigned to regime(s) in this window: {', '.join(missing)} "
+                "(y-axis still shows all three HMM labels)."
+            )
+        st.subheader("Days per regime")
+        st.dataframe(regime_day_counts(win), width="stretch")
 
     if kpis.var_95 is None:
         st.info("Run Phase 3 VaR: `dvc repro generate_var_metrics`")
