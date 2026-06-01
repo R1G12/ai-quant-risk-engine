@@ -9,6 +9,42 @@ from scipy.optimize import minimize
 
 Side = Literal["long", "short"]
 
+DEFAULT_MIN_GROSS_DIVISOR = 5.0
+
+
+def min_gross_per_ticker(n_assets: int, *, divisor: float = DEFAULT_MIN_GROSS_DIVISOR) -> float:
+    """Minimum ``|w_i|`` per name: ``1 / (divisor * n)`` (long or short)."""
+    if n_assets < 1:
+        raise ValueError("min_gross_per_ticker requires at least one asset")
+    if divisor <= 0:
+        raise ValueError("divisor must be positive")
+    return 1.0 / (divisor * n_assets)
+
+
+def _check_min_gross_feasible(
+    n_assets: int,
+    min_w: float,
+    *,
+    max_gross_per_ticker: float,
+) -> None:
+    if min_w * n_assets > 1.0 + 1e-9:
+        raise ValueError(
+            f"Min gross per ticker ({min_w:.4f}) × n={n_assets} exceeds gross budget 1.0"
+        )
+    if min_w > max_gross_per_ticker + 1e-9:
+        raise ValueError(
+            f"min_gross_per_ticker ({min_w:.4f}) exceeds max_gross_per_ticker ({max_gross_per_ticker})"
+        )
+
+
+def enforce_min_gross_per_ticker(weights: np.ndarray, min_w: float) -> np.ndarray:
+    """Raise magnitudes below min_w while preserving sign."""
+    w = np.asarray(weights, dtype=float).copy()
+    for i in range(len(w)):
+        if abs(w[i]) < min_w - 1e-12:
+            w[i] = min_w if w[i] >= 0 else -min_w
+    return w
+
 
 def side_for_ticker(ticker: str, position_sides: dict[str, str] | None) -> Side:
     if position_sides and ticker in position_sides:
@@ -76,11 +112,16 @@ def optimize_max_sharpe_gross(
     risk_free: float = 0.0,
     allow_shorts: bool = True,
     max_gross_per_ticker: float = 0.5,
+    min_gross_divisor: float = DEFAULT_MIN_GROSS_DIVISOR,
     x0: np.ndarray | None = None,
 ) -> tuple[np.ndarray, bool]:
-    """Max Sharpe with sum(|w|) = 1."""
+    """Max Sharpe with sum(|w|) = 1 and |w_i| >= 1/(divisor*n)."""
     n = len(mean_returns)
+    min_w = min_gross_per_ticker(n, divisor=min_gross_divisor)
+    _check_min_gross_feasible(n, min_w, max_gross_per_ticker=max_gross_per_ticker)
     x0 = x0 if x0 is not None else np.ones(n) / n
+    x0 = normalize_gross_weights(x0, allow_shorts=allow_shorts, max_gross_per_ticker=max_gross_per_ticker)
+    x0 = enforce_min_gross_per_ticker(x0, min_w)
     x0 = normalize_gross_weights(x0, allow_shorts=allow_shorts, max_gross_per_ticker=max_gross_per_ticker)
 
     def neg_sharpe(w: np.ndarray) -> float:
@@ -91,14 +132,21 @@ def optimize_max_sharpe_gross(
         return -(ret - risk_free) / vol
 
     cons = [{"type": "eq", "fun": lambda w: np.sum(np.abs(w)) - 1.0}]
+    lo = min_w if allow_shorts else min_w
+    if allow_shorts:
+        bounds = [(-max_gross_per_ticker, max_gross_per_ticker)] * n
+    else:
+        bounds = [(lo, max_gross_per_ticker)] * n
     res = minimize(
         neg_sharpe,
         x0,
         method="SLSQP",
-        bounds=_bounds(n, allow_shorts=allow_shorts, max_gross_per_ticker=max_gross_per_ticker),
+        bounds=bounds,
         constraints=cons,
     )
     w = res.x if res.success else x0
+    w = enforce_min_gross_per_ticker(w, min_w)
+    w = normalize_gross_weights(w, allow_shorts=allow_shorts, max_gross_per_ticker=max_gross_per_ticker)
     return w, bool(res.success)
 
 
@@ -111,10 +159,13 @@ def optimize_partial_weights(
     risk_free: float = 0.0,
     allow_shorts: bool = True,
     max_gross_per_ticker: float = 0.5,
+    min_gross_divisor: float = DEFAULT_MIN_GROSS_DIVISOR,
     position_sides: dict[str, str] | None = None,
 ) -> tuple[np.ndarray, bool]:
     """Fix anchor tickers; optimize free tickers with gross budget on remaining sleeve."""
     n = len(tickers)
+    min_w = min_gross_per_ticker(n, divisor=min_gross_divisor)
+    _check_min_gross_feasible(n, min_w, max_gross_per_ticker=max_gross_per_ticker)
     w = np.zeros(n)
     fixed_idx: list[int] = []
     for t, val in anchor_weights.items():
@@ -141,11 +192,19 @@ def optimize_partial_weights(
                 f"ANCHOR_WEIGHTS use {gross_anchor:.1%} gross budget — no room left for "
                 f"free tickers {free_names}. Reduce anchor magnitudes so sum(|anchors|) < 1."
             )
+        w = normalize_gross_weights(
+            w, allow_shorts=allow_shorts, max_gross_per_ticker=max_gross_per_ticker
+        )
+        w = enforce_min_gross_per_ticker(w, min_w)
         return normalize_gross_weights(
             w, allow_shorts=allow_shorts, max_gross_per_ticker=max_gross_per_ticker
         ), True
 
     if not free_idx:
+        w = normalize_gross_weights(
+            w, allow_shorts=allow_shorts, max_gross_per_ticker=max_gross_per_ticker
+        )
+        w = enforce_min_gross_per_ticker(w, min_w)
         return normalize_gross_weights(
             w, allow_shorts=allow_shorts, max_gross_per_ticker=max_gross_per_ticker
         ), True
@@ -179,6 +238,10 @@ def optimize_partial_weights(
     )
     w_opt = pack(res.x if res.success else x0_free)
     w_opt = apply_position_sides(w_opt, tickers, position_sides)
+    w_opt = enforce_min_gross_per_ticker(w_opt, min_w)
+    w_opt = normalize_gross_weights(
+        w_opt, allow_shorts=allow_shorts, max_gross_per_ticker=max_gross_per_ticker
+    )
     return w_opt, bool(res.success)
 
 
@@ -195,11 +258,15 @@ def resolve_weights(
     mean_returns: np.ndarray | None = None,
     cov: np.ndarray | None = None,
     risk_free: float = 0.0,
+    min_gross_divisor: float = DEFAULT_MIN_GROSS_DIVISOR,
 ) -> np.ndarray:
     """Resolve weight vector for equal | manual | optimised | partial."""
+    n = len(tickers)
+    min_w = min_gross_per_ticker(n, divisor=min_gross_divisor)
     if mode == "equal":
         signs = np.array([sign_for_ticker(t, position_sides) for t in tickers])
         w = signs / len(tickers)
+        w = enforce_min_gross_per_ticker(w, min_w)
         return normalize_gross_weights(w, allow_shorts=allow_shorts, max_gross_per_ticker=max_gross_per_ticker)
 
     if mode == "manual":
@@ -211,12 +278,14 @@ def resolve_weights(
         gross = float(np.sum(np.abs(w)))
         if abs(gross - 1.0) > 1e-3:
             w = normalize_gross_weights(w, allow_shorts=allow_shorts, max_gross_per_ticker=max_gross_per_ticker)
-        return w
+        w = enforce_min_gross_per_ticker(w, min_w)
+        return normalize_gross_weights(w, allow_shorts=allow_shorts, max_gross_per_ticker=max_gross_per_ticker)
 
     if mode == "optimised":
         if w_optimised is None:
             raise NameError("w_optimised")
         w = np.asarray(w_optimised, dtype=float)
+        w = enforce_min_gross_per_ticker(w, min_w)
         return apply_position_sides(
             normalize_gross_weights(w, allow_shorts=allow_shorts, max_gross_per_ticker=max_gross_per_ticker),
             tickers,
@@ -238,6 +307,7 @@ def resolve_weights(
             risk_free=risk_free,
             allow_shorts=allow_shorts,
             max_gross_per_ticker=max_gross_per_ticker,
+            min_gross_divisor=min_gross_divisor,
             position_sides=position_sides,
         )
         return w
