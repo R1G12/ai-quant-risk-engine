@@ -1,0 +1,3 @@
+# News ingestion (yfinance adapter)
+max_headlines_per_ticker: 40  # clamped to [20, 60]
+lookback_days: 30

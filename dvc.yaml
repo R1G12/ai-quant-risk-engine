@@ -16,15 +16,18 @@ stages:
     - src/ingestion/
     - src/utils/
     - configs/
+    - configs/run.yaml
+    - configs/run.ci.yaml
+    - configs/ingestion.yaml
     params:
     - ingestion.seed
     outs:
-    - data/raw/news.csv
+    - data/raw/news.parquet
 
   preprocess:
     cmd: python -m src.preprocessing.preprocess
     deps:
-    - data/raw/news.csv
+    - data/raw/news.parquet
     - src/preprocessing/
     - src/utils/
     - configs/
@@ -423,6 +426,20 @@ metrics:
 - metrics/research_evaluation/metrics.json
 - metrics/research_compare/metrics.json
 - metrics/research_reports/metrics.json
+- metrics/research_simulations/metrics.json
+- metrics/research_backtests/metrics.json
+- metrics/research_stress/metrics.json
+- metrics/research_scenarios/metrics.json
+- metrics/research_evaluation/metrics.json
+- metrics/research_compare/metrics.json
+- metrics/research_reports/metrics.json
+- metrics/research_simulations/metrics.json
+- metrics/research_backtests/metrics.json
+- metrics/research_stress/metrics.json
+- metrics/research_scenarios/metrics.json
+- metrics/research_evaluation/metrics.json
+- metrics/research_compare/metrics.json
+- metrics/research_reports/metrics.json
 plots:
 - metrics/sentiment/plots/metrics:
     x: step
@@ -501,6 +518,34 @@ plots:
 - metrics/research_backtests/plots/metrics:
     x: step
 - metrics/research_stress/plots/metrics:
+    x: step
+- metrics/research_evaluation/plots/metrics:
+    x: step
+- metrics/research_compare/plots/metrics:
+    x: step
+- metrics/research_reports/plots/metrics:
+    x: step
+- metrics/research_simulations/plots/metrics:
+    x: step
+- metrics/research_backtests/plots/metrics:
+    x: step
+- metrics/research_stress/plots/metrics:
+    x: step
+- metrics/research_scenarios/plots/metrics:
+    x: step
+- metrics/research_evaluation/plots/metrics:
+    x: step
+- metrics/research_compare/plots/metrics:
+    x: step
+- metrics/research_reports/plots/metrics:
+    x: step
+- metrics/research_simulations/plots/metrics:
+    x: step
+- metrics/research_backtests/plots/metrics:
+    x: step
+- metrics/research_stress/plots/metrics:
+    x: step
+- metrics/research_scenarios/plots/metrics:
     x: step
 - metrics/research_evaluation/plots/metrics:
     x: step

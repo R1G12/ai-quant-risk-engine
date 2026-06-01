@@ -1,4 +1,5 @@
-# Map news source names to tickers for sentiment aggregation.
+# Map news source names to tickers when the raw row has no ``ticker`` column (sample ingest).
+# yfinance ingest sets ``ticker`` directly from run.yaml — this file is not used for those rows.
 source_to_ticker:
   Bloomberg: AAPL
   Reuters: XOM

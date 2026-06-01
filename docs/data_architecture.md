@@ -9,7 +9,7 @@ The platform uses a **parquet-first data lake** with Hive-style partitioning for
 ```
 data/
 ├── raw/
-│   ├── news.csv                 # Phase 1 (migrate to parquet in stretch)
+│   ├── news.parquet             # Phase 1 raw landing (zstd)
 │   ├── portfolio/
 │   │   └── holdings.parquet     # From aqre prepare / run profile (gitignored)
 │   └── market/                  # Raw landing from ingest

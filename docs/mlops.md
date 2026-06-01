@@ -8,7 +8,7 @@ Defined in [`dvc.yaml`](../dvc.yaml).
 
 | Stage | Command | Outputs |
 |-------|---------|---------|
-| `ingest` | `python -m src.ingestion.ingest` | `data/raw/news.csv` |
+| `ingest` | `python -m src.ingestion.ingest` | `data/raw/news.parquet` |
 | `preprocess` | `python -m src.preprocessing.preprocess` | `data/processed/news.parquet` |
 | `sentiment` | `python -m src.sentiment.finbert` | `data/processed/sentiment.parquet` |
 

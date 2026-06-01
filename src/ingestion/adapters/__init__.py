@@ -8,11 +8,13 @@ from typing import Callable
 import polars as pl
 
 from src.ingestion.adapters.sample import load_sample_news
+from src.ingestion.adapters.yfinance_news import load_yfinance_news
 
 Adapters = dict[str, Callable[[], pl.DataFrame]]
 
 _ADAPTERS: Adapters = {
     "sample": load_sample_news,
+    "yfinance": load_yfinance_news,
 }
 
 

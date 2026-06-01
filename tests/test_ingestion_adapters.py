@@ -14,7 +14,14 @@ from src.ingestion.adapters.sample import load_sample_news
 def test_load_sample_news_schema() -> None:
     df = load_sample_news()
     assert df.height == 3
-    assert set(df.columns) == {"date", "source", "title", "content"}
+    assert set(df.columns) == {"date", "ticker", "source", "title", "content"}
+    assert df["ticker"].to_list() == ["AAPL", "XOM", "GS"]
+
+
+def test_yfinance_adapter_registered() -> None:
+    from src.ingestion.adapters import _ADAPTERS
+
+    assert "yfinance" in _ADAPTERS
 
 
 def test_load_news_sample_adapter() -> None:

@@ -26,6 +26,21 @@ def _strip_utf8(column: str) -> pl.Expr:
     )
 
 
+def _read_raw_news(path: Path) -> pl.DataFrame:
+    """Read raw news from Parquet (preferred) or legacy CSV."""
+    if path.suffix.lower() == ".parquet":
+        return pl.read_parquet(path)
+    if path.suffix.lower() == ".csv":
+        LOGGER.warning(
+            "Reading legacy news CSV at %s; re-run ingest to produce data/raw/news.parquet",
+            path,
+        )
+        return pl.read_csv(path)
+    if path.with_suffix(".parquet").is_file():
+        return pl.read_parquet(path.with_suffix(".parquet"))
+    return pl.read_parquet(path)
+
+
 def _clean_dataframe(df: pl.DataFrame) -> pl.DataFrame:
     """Normalize text, filter empty rows, trim strings, sort columns."""
     source_col = next((c for c in SOURCE_TEXT_COLUMNS if c in df.columns), None)
@@ -51,27 +66,14 @@ def preprocess_news(
     input_path: Optional[Path] = None,
     output_path: Optional[Path] = None,
 ) -> Path:
-    """Read raw news CSV, clean it, and write a Parquet file.
-
-    Parameters
-    ----------
-    input_path:
-        Path to the raw CSV file. Defaults to ``RAW_NEWS_PATH``.
-    output_path:
-        Destination Parquet file. Defaults to ``PROCESSED_NEWS_PATH``.
-
-    Returns
-    -------
-    Path
-        Path to the generated Parquet file.
-    """
+    """Read raw news, clean it, and write a Parquet file."""
     cfg = load_config()
     LOGGER.info("Starting preprocessing", extra={"seed": cfg.seed})
 
     inp = input_path or RAW_NEWS_PATH
     out = output_path or PROCESSED_NEWS_PATH
 
-    df = pl.read_csv(inp)
+    df = _read_raw_news(inp)
     df = _clean_dataframe(df)
 
     out.parent.mkdir(parents=True, exist_ok=True)

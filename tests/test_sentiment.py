@@ -40,3 +40,28 @@ def test_run_sentiment_writes_schema(mock_init: MagicMock, tmp_path: Path) -> No
     assert "sentiment_score" in df.columns
     assert df.height == 1
     assert (metrics_dir / "metrics.json").is_file()
+
+
+def test_run_sentiment_writes_empty_output_when_news_empty(tmp_path: Path) -> None:
+    inp = tmp_path / "news.parquet"
+    inp.parent.mkdir(parents=True, exist_ok=True)
+    pl.DataFrame(
+        schema={
+            "date": pl.Utf8,
+            "ticker": pl.Utf8,
+            "source": pl.Utf8,
+            "title": pl.Utf8,
+            TEXT_COLUMN: pl.Utf8,
+        }
+    ).write_parquet(inp)
+
+    out = tmp_path / "sentiment.parquet"
+    metrics_dir = tmp_path / "metrics"
+
+    run_sentiment(input_path=inp, output_path=out, metrics_path=metrics_dir)
+
+    assert out.is_file()
+    df = pl.read_parquet(out)
+    assert df.is_empty()
+    assert "sentiment_label" in df.columns
+    assert "sentiment_score" in df.columns

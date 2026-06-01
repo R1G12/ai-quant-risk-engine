@@ -98,8 +98,17 @@ def run_sentiment(
     metrics_dir.mkdir(parents=True, exist_ok=True)
 
     df = _load_processed_news(inp)
+    out.parent.mkdir(parents=True, exist_ok=True)
     if df.is_empty():
-        LOGGER.warning("Processed news file is empty; exiting sentiment step")
+        LOGGER.warning("Processed news file is empty; writing empty sentiment output")
+        schema = dict(df.schema)
+        schema.setdefault("sentiment_label", pl.Utf8)
+        schema.setdefault("sentiment_score", pl.Float64)
+        pl.DataFrame(schema=schema).write_parquet(out)
+        _close_file_handlers()
+        with Live(dir=metrics_dir, save_dvc_exp=False, dvcyaml=False) as live:
+            live.log_metric("avg_positive_score", 0.0)
+            live.log_metric("total_rows", 0)
         return out
 
     text_col = _resolve_text_column(df)
@@ -120,7 +129,6 @@ def run_sentiment(
 
     df_sent = _add_sentiment_columns(df, results)
 
-    out.parent.mkdir(parents=True, exist_ok=True)
     df_sent.write_parquet(out)
     LOGGER.info("Sentiment results written", extra={"rows": df_sent.height, "path": str(out)})
 

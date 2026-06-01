@@ -47,7 +47,7 @@ def test_run_profile_env_live(run_yaml: Path, monkeypatch: pytest.MonkeyPatch) -
     assert run is not None
     env = run_profile_env(run)
     assert env["MARKET_SOURCE"] == "yfinance"
-    assert env["NEWS_SOURCE"] == "sample"
+    assert env["NEWS_SOURCE"] == "yfinance"
 
 
 def test_run_profile_env_force_overrides_shell(run_yaml: Path, monkeypatch: pytest.MonkeyPatch) -> None:
