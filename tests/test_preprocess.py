@@ -11,7 +11,7 @@ from src.preprocessing.preprocess import TEXT_COLUMN, preprocess_news
 def test_preprocess_news_produces_text_column(tmp_path: Path) -> None:
     raw = tmp_path / "raw" / "news.csv"
     raw.parent.mkdir(parents=True)
-    fetch_news(output_path=raw)
+    fetch_news(output_path=raw, source="sample")
 
     out = tmp_path / "processed" / "news.parquet"
     preprocess_news(input_path=raw, output_path=out)

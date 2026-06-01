@@ -21,10 +21,12 @@ aqre run profile --dashboard
 
 | Value | Market data | News ingestion |
 |-------|-------------|----------------|
-| `demo` | `sample` (local synthetic) | `sample` |
-| `live` | `yfinance` | `sample` (real news adapter is Phase 5 backlog) |
+| `demo` | `sample` (local synthetic) | `sample` (3 fixed headlines, offline) |
+| `live` | `yfinance` | `yfinance` (per-ticker headlines from Yahoo) |
 
-`aqre prepare` and `aqre run profile` set `MARKET_SOURCE` from `mode` (ignores a leftover `MARKET_SOURCE=sample` in the shell). Plain `dvc repro` still respects `MARKET_SOURCE` for CI.
+`aqre prepare` and `aqre run profile` set `MARKET_SOURCE` and `NEWS_SOURCE` from `mode` (ignores leftover `MARKET_SOURCE=sample` / `NEWS_SOURCE=sample` in the shell when using `aqre run profile`). Plain `dvc repro` still respects env vars for CI.
+
+Live news requires `pip install -e ".[market]"` and network access for `dvc repro ingest`. Cap headlines per ticker via `ingestion.max_headlines_per_ticker` in [`params.yaml`](../params.yaml) (default `10`).
 
 ## `market`
 

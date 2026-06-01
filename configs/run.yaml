@@ -2,7 +2,7 @@
 # Apply with: aqre prepare && aqre run profile
 # CI continues to use MARKET_SOURCE=sample via .github/workflows/ci.yml
 
-mode: live  # demo | live
+mode: live  # demo | live (takes more time, but takes real live data).
 
 market:
   tickers: [SMH, MSFT, NVDA, USO, IWM, BABA, PDD]

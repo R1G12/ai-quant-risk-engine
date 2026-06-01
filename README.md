@@ -1,3 +1,10 @@
+If you only have 2 minutes:
+edit [configs/run.yaml](configs/run.yaml)
+run in powershell:
+aqre prepare
+aqre run profile --dashboard
+
+
 # AI Quant Risk Engine
 
 Institutional-style **financial sentiment + risk modeling** platform for a hedge-fund class project.
@@ -270,7 +277,7 @@ aqre dashboard --legacy     # Phase 4 chart explorer
 | `RUN_PROFILE` | Path to run YAML (CI: `configs/run.ci.yaml`) |
 | `MARKET_SOURCE` | `sample` or `yfinance` (plain `dvc repro`; profile commands override when using `aqre run profile`) |
 | `MARKET_PIN_DATES` | `1` = use pinned `start_date` / `end_date` (CI) |
-| `NEWS_SOURCE` | `sample` (default for news ingest) |
+| `NEWS_SOURCE` | `sample` or `yfinance` (`aqre run profile` sets from `mode`; live needs `.[market]` + network) |
 
 Holdings under `data/raw/portfolio/holdings.parquet` are refreshed automatically when tickers no longer match the active profile (e.g. after switching from local `run.yaml` to CI tickers).
 
@@ -425,4 +432,4 @@ Full index: [docs/README.md](docs/README.md)
 
 ## Roadmap
 
-See [docs/roadmap.md](docs/roadmap.md) for current backlog. Phases 1–5 (sentiment → market features → risk engine → research → platform dashboard/copilot/API) are implemented in this repo; future work includes live news ingestion and extended private-markets research.
+See [docs/roadmap.md](docs/roadmap.md) for current backlog. Phases 1–5 (sentiment → market features → risk engine → research → platform dashboard/copilot/API) are implemented in this repo; future work includes additional news providers (e.g. NewsAPI) and extended private-markets research.

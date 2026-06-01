@@ -36,7 +36,7 @@ flowchart TB
 
 | Package | Responsibility |
 |---------|----------------|
-| `src.ingestion` | Sample / future API news ingestion |
+| `src.ingestion` | `sample` + `yfinance` news adapters (extensible registry) |
 | `src.preprocessing` | News cleaning → canonical `text` |
 | `src.sentiment` | FinBERT inference |
 | `src.market` | OHLCV ingest, clean, partitioned parquet lake, ticker validation |

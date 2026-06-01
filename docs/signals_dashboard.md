@@ -37,9 +37,10 @@ Three tabs:
 ### FinBERT
 
 - **30-day window** of FinBERT-labelled news, aggregated per holding ticker.
+- With `mode: live` in [`configs/run.yaml`](../configs/run.yaml), re-run Phase 1 (`aqre run profile --phase phase1`) so ingest pulls Yahoo headlines per ticker before FinBERT.
 - **Sentiment score** (per ticker):  
   `mean(positive labels) − mean(negative labels)`  
-  on rows mapped from news `source` → ticker via [`configs/sentiment_map.yaml`](../configs/sentiment_map.yaml).
+  on rows attributed by `ticker` (live yfinance) or publisher → ticker via [`configs/sentiment_map.yaml`](../configs/sentiment_map.yaml) (sample).
 - **Visuals**: bar chart of scores; table (`bullish_ratio`, `negative_ratio`, `article_count`, `avg_confidence`); optional daily line chart for one ticker.
 
 ### Trailing stops
@@ -61,7 +62,7 @@ Each tranche exits **⅓** of the remaining position when breached (see `simulat
 
 - **Current HMM regime**: latest `regime_label` from `data/risk/portfolio/regimes.parquet` (Gaussian HMM on portfolio returns).
 - **Portfolio VaR 95%**: same metric as the platform home KPI (`compute_window_kpis` in `src/analytics/dashboard_kpis.py`).
-- **Visual**: regime history (last 120 observations).
+- **Visual**: regime history (last 365 observations); y-axis always shows `low`, `mid`, and `high` even if a label has no days in the window.
 
 ## Code map
 

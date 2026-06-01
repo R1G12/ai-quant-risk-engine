@@ -47,7 +47,16 @@ def test_run_profile_env_live(run_yaml: Path, monkeypatch: pytest.MonkeyPatch) -
     assert run is not None
     env = run_profile_env(run)
     assert env["MARKET_SOURCE"] == "yfinance"
-    assert env["NEWS_SOURCE"] == "sample"
+    assert env["NEWS_SOURCE"] == "yfinance"
+
+
+def test_run_profile_env_demo_news_sample(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    p = tmp_path / "run.yaml"
+    p.write_text("mode: demo\nmarket:\n  tickers: [AAPL]\n", encoding="utf-8")
+    monkeypatch.delenv("NEWS_SOURCE", raising=False)
+    run = load_run_config(p)
+    assert run is not None
+    assert run_profile_env(run)["NEWS_SOURCE"] == "sample"
 
 
 def test_run_profile_env_force_overrides_shell(run_yaml: Path, monkeypatch: pytest.MonkeyPatch) -> None:

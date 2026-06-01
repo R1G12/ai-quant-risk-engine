@@ -18,10 +18,12 @@ Reusable, reproducible quantitative features for risk modeling and backtesting. 
 
 ## Sentiment ↔ market bridge
 
-Phase 1 news lacks tickers. Mapping via [`configs/sentiment_map.yaml`](../configs/sentiment_map.yaml):
+**Sample mode** (`demo` / CI): fixed headlines without a `ticker` column. Mapping via [`configs/sentiment_map.yaml`](../configs/sentiment_map.yaml):
 
-- `source_to_ticker`: map news source → equity ticker
+- `source_to_ticker`: map news publisher → equity ticker
 - `default_ticker`: `MARKET` for unmapped articles
+
+**Live mode** (`yfinance` news): each row includes `ticker` from the symbol fetched; aggregation prefers that column and falls back to the publisher map when absent.
 
 ## Merged risk dataset
 

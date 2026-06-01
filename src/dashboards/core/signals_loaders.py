@@ -6,28 +6,19 @@ from datetime import date, timedelta
 
 import polars as pl
 
+from src.features.sentiment_ticker import resolve_ticker_series
 from src.portfolio.stops import TrailingStopSet, trailing_stop_set
 from src.risk.portfolio.holdings import load_weights
 from src.utils.config import AppConfig
 from src.utils.paths import PROCESSED_SENTIMENT_PATH, RISK_REGIMES_PATH
 
+# Gaussian HMM labels from src.risk.regimes.hmm (mean-return ordering).
+HMM_REGIME_LABELS: tuple[str, ...] = ("low", "mid", "high")
+REGIME_HISTORY_OBS = 365
+
 
 def _map_sentiment_to_tickers(df: pl.DataFrame, app: AppConfig) -> pl.DataFrame:
-    """Map news rows to tickers using sentiment_map (same rules as feature stage)."""
-    mapping = app.sentiment_map.get("source_to_ticker", {}) or {}
-    default = app.sentiment_map.get(
-        "default_ticker",
-        app.market.default_sentiment_ticker,
-    )
-
-    ticker_expr = pl.lit(str(default))
-    for source, ticker in mapping.items():
-        ticker_expr = (
-            pl.when(pl.col("source") == source)
-            .then(pl.lit(str(ticker)))
-            .otherwise(ticker_expr)
-        )
-
+    """Map news rows to tickers (same rules as feature stage)."""
     date_col = df.schema.get("date")
     if date_col == pl.Date:
         ts = pl.col("date").cast(pl.Datetime(time_unit="us", time_zone="UTC"))
@@ -36,7 +27,8 @@ def _map_sentiment_to_tickers(df: pl.DataFrame, app: AppConfig) -> pl.DataFrame:
     else:
         ts = pl.col("date").str.to_datetime(time_zone="UTC", strict=False)
 
-    return df.with_columns(ts.alias("timestamp"), ticker_expr.alias("ticker"))
+    tickers = resolve_ticker_series(df, app)
+    return df.with_columns(ts.alias("timestamp")).with_columns(tickers.alias("ticker"))
 
 
 def _label_flags(lf: pl.LazyFrame) -> pl.LazyFrame:
@@ -147,3 +139,20 @@ def load_latest_regime() -> tuple[str | None, pl.DataFrame | None]:
         return None, regimes
     latest = regimes["regime_label"][-1]
     return str(latest) if latest is not None else None, regimes
+
+
+def regime_history_window(
+    regimes_df: pl.DataFrame,
+    *,
+    n_obs: int = REGIME_HISTORY_OBS,
+) -> pl.DataFrame:
+    """Last ``n_obs`` regime rows for dashboard history charts."""
+    return regimes_df.tail(n_obs)
+
+
+def regimes_missing_in_window(window: pl.DataFrame) -> list[str]:
+    """HMM labels with no rows in ``window`` (for UI hints)."""
+    if window.is_empty() or "regime_label" not in window.columns:
+        return list(HMM_REGIME_LABELS)
+    present = {str(x) for x in window["regime_label"].unique().to_list()}
+    return [label for label in HMM_REGIME_LABELS if label not in present]

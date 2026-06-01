@@ -9,9 +9,13 @@ import streamlit as st
 
 from src.dashboards.core.loaders import load_app, load_kpis
 from src.dashboards.core.signals_loaders import (
+    HMM_REGIME_LABELS,
+    REGIME_HISTORY_OBS,
     load_finbert_window,
     load_latest_regime,
     load_trailing_stops_table,
+    regime_history_window,
+    regimes_missing_in_window,
 )
 from src.dashboards.core.theme import apply_theme, page_header
 
@@ -155,15 +159,38 @@ with tab_risk:
     if regime_label is None:
         st.info("Run Phase 3 portfolio metrics: `dvc repro generate_portfolio_metrics`")
     elif regimes_df is not None and regimes_df.height > 1:
-        tail = regimes_df.tail(120)
+        tail = regime_history_window(regimes_df, n_obs=REGIME_HISTORY_OBS)
+        pdf = tail.to_pandas()
+        pdf["regime_label"] = pdf["regime_label"].astype(
+            str,
+        )
         reg_plot = px.scatter(
-            tail.to_pandas(),
+            pdf,
             x="timestamp",
             y="regime_label",
-            title="HMM regime history (last 120 observations)",
+            title=f"HMM regime history (last {REGIME_HISTORY_OBS} observations)",
+            category_orders={"regime_label": list(HMM_REGIME_LABELS)},
         )
-        reg_plot.update_layout(template="plotly_dark", height=320)
+        reg_plot.update_layout(template="plotly_dark", height=360)
+        reg_plot.update_yaxes(
+            categoryorder="array",
+            categoryarray=list(HMM_REGIME_LABELS),
+            title="Regime (low / mid / high return)",
+        )
         st.plotly_chart(reg_plot, width="stretch")
+
+        missing = regimes_missing_in_window(tail)
+        if missing:
+            st.caption(
+                f"No days labeled **{', '.join(missing)}** in this window "
+                f"(y-axis still shows all {len(HMM_REGIME_LABELS)} regimes)."
+            )
+        counts = (
+            tail.group_by("regime_label")
+            .len()
+            .sort("regime_label")
+        )
+        st.dataframe(counts, width="stretch", hide_index=True)
 
     if kpis.var_95 is None:
         st.info("Run Phase 3 VaR: `dvc repro generate_var_metrics`")

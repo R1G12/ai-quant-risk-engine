@@ -4,16 +4,13 @@ from __future__ import annotations
 
 import polars as pl
 
+from src.features.sentiment_ticker import resolve_ticker_expr
 from src.utils.config import AppConfig
 
 
 def map_sentiment_to_tickers(lf: pl.LazyFrame, app: AppConfig) -> pl.LazyFrame:
-    """Map news rows to tickers using sentiment_map config."""
-    mapping = app.sentiment_map.get("source_to_ticker", {}) or {}
-    default = app.sentiment_map.get(
-        "default_ticker",
-        app.market.default_sentiment_ticker,
-    )
+    """Map news rows to tickers (explicit ``ticker`` column or publisher map)."""
+    has_ticker = "ticker" in lf.collect_schema().names()
 
     lf = lf.with_columns(
         pl.col("date").str.to_datetime(time_zone="UTC").alias("timestamp"),
@@ -23,15 +20,9 @@ def map_sentiment_to_tickers(lf: pl.LazyFrame, app: AppConfig) -> pl.LazyFrame:
         pl.col("sentiment_score").alias("confidence"),
     )
 
-    ticker_expr = pl.lit(default)
-    for source, ticker in mapping.items():
-        ticker_expr = (
-            pl.when(pl.col("source") == source)
-            .then(pl.lit(ticker))
-            .otherwise(ticker_expr)
-        )
-
-    return lf.with_columns(ticker_expr.alias("ticker"))
+    return lf.with_columns(
+        resolve_ticker_expr(app, has_ticker_column=has_ticker).alias("ticker")
+    )
 
 
 def aggregate_sentiment_daily(lf: pl.LazyFrame) -> pl.LazyFrame:

@@ -4,6 +4,7 @@
 ingestion:
   source: sample
   seed: 42
+  max_headlines_per_ticker: 10
 preprocessing:
   seed: 42
 sentiment:
