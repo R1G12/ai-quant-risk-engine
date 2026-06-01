@@ -19,6 +19,7 @@ from src.analytics.live_market_cache import (
     load_live_prices,
     start_background_fetch,
 )
+from src.dashboards.core.display import format_exception
 from src.analytics.ticker_utils import (
     LIVE_TICKER_CHART_IDS,
     chart_uses_pipeline_only,
@@ -302,7 +303,7 @@ def main() -> None:
     try:
         kpis = compute_window_kpis(app, date_range)
     except Exception as exc:
-        st.error(f"KPI calculation failed: {exc}")
+        st.error(f"KPI calculation failed: {format_exception(exc)}")
         kpis = None
 
     main_col, side_col = st.columns([3, 1])
@@ -351,12 +352,12 @@ def main() -> None:
                     if fig is not None:
                         st.plotly_chart(fig, width="stretch")
                 except Exception as exc:
-                    st.error(f"Backtest chart failed: {exc}")
+                    st.error(f"Backtest chart failed: {format_exception(exc)}")
         else:
             try:
                 fig = spec.builder(ctx)
             except Exception as exc:
-                st.error(f"Chart build failed: {exc}")
+                st.error(f"Chart build failed: {format_exception(exc)}")
                 fig = None
             if fig is None:
                 st.warning("No data for this chart. Run `dvc repro` through research stages.")

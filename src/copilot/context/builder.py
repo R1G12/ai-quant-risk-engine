@@ -10,7 +10,7 @@ import polars as pl
 from src.analytics.dashboard_kpis import WindowKpis, compute_window_kpis
 from src.analytics.charts.context import DateRange
 from src.risk.portfolio.exposures import load_exposure_table
-from src.risk.portfolio.holdings import load_weights
+from src.risk.portfolio.holdings import load_portfolio_weights, portfolio_weighting_mode
 from src.utils.config import AppConfig, load_app_config
 from src.utils.paths import (
     RISK_CORRELATIONS_DIR,
@@ -19,6 +19,7 @@ from src.utils.paths import (
     RISK_PORTFOLIO_METRICS_PATH,
     RISK_REGIMES_PATH,
     RISK_VAR_DIR,
+    display_path,
 )
 
 
@@ -53,7 +54,7 @@ def _load_correlations() -> pl.DataFrame | None:
 def _load_sentiment_summary(app: AppConfig) -> pl.DataFrame | None:
     if not RISK_DATASET_PATH.is_file():
         return None
-    tickers = list(load_weights(app).keys())
+    tickers = list(load_portfolio_weights(app).keys())
     return (
         pl.scan_parquet(RISK_DATASET_PATH)
         .filter(pl.col("ticker").is_in(tickers))
@@ -73,17 +74,26 @@ def build_portfolio_context(
 ) -> PortfolioContext:
     """Build portfolio context from on-disk DVC artifacts."""
     app = app or load_app_config()
-    weights = load_weights(app)
+    weights = load_portfolio_weights(app)
     tickers = list(weights.keys())
+    weighting = portfolio_weighting_mode(app)
 
     regimes = pl.read_parquet(RISK_REGIMES_PATH) if RISK_REGIMES_PATH.is_file() else None
     port_metrics = (
         pl.read_parquet(RISK_PORTFOLIO_METRICS_PATH) if RISK_PORTFOLIO_METRICS_PATH.is_file() else None
     )
 
-    meta: dict[str, object] = {"weight_source": app.research.backtest.weight_source}
+    meta: dict[str, object] = {
+        "weighting": weighting,
+        "weight_source": app.research.backtest.weight_source,
+        "weights_from": (
+            "optimization"
+            if weighting in ("optimised", "partial") and RISK_OPT_WEIGHTS_PATH.is_file()
+            else "holdings"
+        ),
+    }
     if RISK_OPT_WEIGHTS_PATH.is_file():
-        meta["optimization_weights_path"] = str(RISK_OPT_WEIGHTS_PATH)
+        meta["optimization_weights_path"] = display_path(RISK_OPT_WEIGHTS_PATH)
 
     return PortfolioContext(
         experiment_id=app.research.meta.experiment_id,

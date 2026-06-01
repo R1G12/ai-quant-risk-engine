@@ -7,7 +7,7 @@ tickers:
   - JPM
 # Omit pinning for a rolling ~1Y window (see use_rolling_window in params.yaml).
 use_rolling_window: true
-rolling_days: 365
+rolling_days: 1095
 start_date: "2024-01-01"
 end_date: "2024-03-31"
 partition_freq: month

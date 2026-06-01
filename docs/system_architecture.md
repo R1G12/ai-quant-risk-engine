@@ -7,7 +7,7 @@
 | Data plane | `src/market`, `src/features`, DVC | Reproducible parquet artifacts |
 | Analytics plane | `src/risk`, `src/simulation`, `src/backtesting` | Quant models |
 | Intelligence plane | `src/copilot` | Decision support, explanations |
-| Presentation | `src/dashboards`, `src/analytics` | Human interfaces (incl. [Signals page](signals_dashboard.md)) |
+| Presentation | `src/dashboards`, `src/analytics` | Human interfaces ([Portfolio](portfolio_dashboard.md), [Signals](signals_dashboard.md), …) |
 | Serving | `src/api` | REST APIs for portfolio/risk/copilot |
 | Observability | `src/monitoring` | Health, quality, drift, alerts |
 | Orchestration | `src/orchestration`, DVC | Scheduled / bundled workflows |
@@ -17,7 +17,7 @@
 
 - **Copilot** reads artifacts only; never mutates positions or executes trades.
 - **API** is stateless; sources truth from parquet on disk.
-- **Dashboards** are read-only views + copilot Q&A. Sidebar pages include Portfolio, Risk, Simulations, Monitoring, Copilot, and **Signals** (sentiment-derived stops).
+- **Dashboards** are read-only views + copilot Q&A. **Portfolio** shows effective weights from `portfolio.weighting` ([portfolio_dashboard.md](portfolio_dashboard.md)); **Signals** shows sentiment-derived stops ([signals_dashboard.md](signals_dashboard.md)).
 - **DVC** remains the system of record for lineage and reproducibility.
 
 ## Data flow

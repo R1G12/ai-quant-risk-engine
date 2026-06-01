@@ -12,6 +12,9 @@ portfolio:
   weighting: equal
   allow_shorts: false
   max_gross_per_ticker: 0.5
+  sentiment_mu_blend: 0
+  sentiment_magnitude_tilt: false
+  sentiment_position_sides: false
   position_sides: {}
   manual_weights: {}
   anchor_weights: {}

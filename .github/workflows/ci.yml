@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, master, Romain_Phase_1]
+    branches: [main, master, Dev, Romain_Updates_0106]
   pull_request:
     branches: [main, master]
 
@@ -37,8 +37,8 @@ jobs:
           dvc repro ingest_market_data clean_market_data generate_returns
           dvc repro generate_volatility_features generate_technical_features
           dvc repro generate_sentiment_features merge_features --force
-          dvc repro generate_volatility_metrics generate_var_metrics generate_cvar_metrics
-          dvc repro generate_correlations generate_portfolio_metrics --force
+          dvc repro generate_correlations optimize_portfolios --force
+          dvc repro generate_portfolio_metrics generate_volatility_metrics generate_var_metrics generate_cvar_metrics --force
           dvc repro generate_efficient_frontier
           dvc repro generate_simulations run_backtests run_stress_tests run_scenario_analysis
           dvc repro evaluate_performance compare_experiments generate_research_reports

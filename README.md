@@ -1,3 +1,10 @@
+If you only have 2 minutes:
+edit [configs/run.yaml](configs/run.yaml)
+run in powershell:
+aqre prepare
+aqre run profile --dashboard   # full pipeline refresh, then open the UI
+
+
 # AI Quant Risk Engine
 
 Institutional-style **financial sentiment + risk modeling** platform for a hedge-fund class project.
@@ -45,13 +52,13 @@ flowchart TB
   gen_vol --> merge[merge_features]
   gen_tech --> merge
   gen_sent --> merge
-  merge --> risk_vol[generate_volatility_metrics]
+  merge --> risk_corr[generate_correlations]
+  risk_corr --> risk_opt[optimize_portfolios]
+  risk_opt --> risk_port[generate_portfolio_metrics]
+  risk_port --> risk_vol[generate_volatility_metrics]
   risk_vol --> risk_var[generate_var_metrics]
   risk_var --> risk_cvar[generate_cvar_metrics]
-  merge --> risk_corr[generate_correlations]
-  risk_corr --> risk_port[generate_portfolio_metrics]
-  risk_port --> risk_opt[optimize_portfolios]
-  risk_opt --> risk_front[generate_efficient_frontier]
+  risk_cvar --> risk_front[generate_efficient_frontier]
   risk_front --> gen_sim[generate_simulations]
   gen_sim --> run_bt[run_backtests]
   gen_sim --> run_stress[run_stress_tests]
@@ -89,7 +96,8 @@ flowchart TB
 
 ### Phase 5
 - Multi-page Streamlit platform, copilot, FastAPI, monitoring, governance reports (`aqre dashboard`, `aqre copilot`, `aqre api`)
-- **Signals** sidebar page: FinBERT scores (30d), 3-tranche trailing stops, HMM regime, VaR 95% — see [docs/signals_dashboard.md](docs/signals_dashboard.md)
+- **Portfolio** page: weights follow `portfolio.weighting`; **FinBERT sides**, **blended expected returns**, **HMM regime mixer**, and optional **magnitude tilt** for `optimised` / `partial` — [docs/portfolio_dashboard.md](docs/portfolio_dashboard.md)
+- **Signals** sidebar page: FinBERT scores (30d), 3-tranche trailing stops, HMM regime, VaR 95% (same scores feed optimization when enabled) — [docs/signals_dashboard.md](docs/signals_dashboard.md)
 
 ## Project structure
 
@@ -125,12 +133,30 @@ Non-technical users: see [docs/quickstart_nontechnical.md](docs/quickstart_nonte
 **Configure a run:** edit [configs/run.yaml](configs/run.yaml) (tickers, `demo` vs `live`, portfolio weighting), then:
 
 ```powershell
-aqre prepare          # holdings + run manifest; validates tickers
-aqre run profile      # applies profile env + full dvc repro
-# or: aqre run profile --dashboard
+aqre prepare                    # holdings + run manifest only (fast)
+aqre run profile                # prepare + full dvc repro (no browser)
+aqre run profile --dashboard    # same repro, then launch Streamlit when done
+aqre dashboard                  # UI only — uses whatever is already on disk
 ```
 
 See [docs/run_profile.md](docs/run_profile.md). CI uses [configs/run.ci.yaml](configs/run.ci.yaml) via `RUN_PROFILE` (sample tickers, pinned dates).
+
+### `aqre run profile` vs `--dashboard` vs `aqre dashboard`
+
+| Command | Updates pipeline data? | Opens Streamlit? |
+|---------|------------------------|------------------|
+| `aqre prepare` | Holdings + `run_manifest.json` only | No |
+| `aqre run profile` | Yes — full `dvc repro` (all phases in `dvc.yaml`) | **No** |
+| `aqre run profile --dashboard` | Yes — **same** full `dvc repro` as above | **Yes** — starts Phase 5 UI after repro succeeds |
+| `aqre dashboard` | **No** — reads existing parquet/metrics | Yes |
+
+`--dashboard` does **not** mean “dashboard only.” It means **run the full profile pipeline, then open the app**. Use plain `aqre dashboard` when data is already fresh and you only want to explore charts (Signals, copilot pages, etc.).
+
+Useful flags on `aqre run profile`:
+
+- `--skip-repro` — prepare holdings only; with `--dashboard`, opens the UI without running `dvc repro`
+- `--legacy` — after repro, open the Phase 4 chart explorer instead of the Phase 5 platform (`aqre dashboard --legacy`)
+- `--dry-run` — print what would run, without executing
 
 **One-shot bootstrap (Windows / macOS / Linux):**
 
@@ -185,36 +211,42 @@ Live fetch tries several Yahoo client strategies automatically (including a no-v
 
 Static export (reports/CI): `data/analytics/dashboard/index.html` after `generate_research_reports`.
 
-### Refresh sample data to ~1 year
+### Refresh market data (~3 years rolling)
 
-After enabling rolling dates in config, run market + downstream stages once:
+After changing tickers or `rolling_days`, re-run market + downstream stages once:
 
 ```powershell
 $env:MARKET_SOURCE = "sample"
-# Local dev uses rolling window (end=today, start=today-365d) unless MARKET_PIN_DATES=1
+# Local dev: end=today, start=today-rolling_days (see configs/run.yaml; default ~3y)
 dvc repro ingest_market_data clean_market_data generate_returns merge_features
 # Add risk + research stages as needed (FinBERT sentiment is the slow step)
 ```
 
-Until repro completes, the slider clamps to whatever exists on disk (e.g. 2024 Q1) with a banner in the app.
+Until repro completes, the dashboard date slider clamps to whatever parquet exists on disk (may be older than your config) with a banner in the app.
 
 ## Configure tickers and date range
 
 **Preferred:** [configs/run.yaml](configs/run.yaml) (merged into app config; drives `aqre prepare` and ingest).
 
-**Legacy / DVC params:** [`params.yaml`](params.yaml) or [`configs/market.yaml`](configs/market.yaml):
+Local runs use a **rolling window** (not the pinned `start_date` / `end_date` in `params.yaml` unless you set `MARKET_PIN_DATES=1`):
 
 ```yaml
 market:
-  source: sample          # or yfinance
-  tickers: [AAPL, MSFT, XOM, GS, JPM]
-  use_rolling_window: true   # end=today, start=today-rolling_days
-  rolling_days: 365
-  # Pin for CI / reproducibility:
-  # use_rolling_window: false
-  # start_date: "2024-01-01"
-  # end_date: "2024-03-31"
+  tickers: [SMH, MSFT, NVDA, USO, IWM, BABA, PDD]
+  use_rolling_window: true    # end = today (latest available session from ingest)
+  rolling_days: 1095         # ~3 calendar years of history
 ```
+
+Then:
+
+```powershell
+aqre prepare
+aqre run profile   # or dvc repro ingest_market_data clean_market_data ...
+```
+
+**CI / reproducible pins** use [`configs/run.ci.yaml`](configs/run.ci.yaml) with `MARKET_PIN_DATES=1` and short fixed dates in [`params.yaml`](params.yaml) (`start_date` / `end_date` — for GitHub Actions only, not your local timeline).
+
+**Legacy / DVC-only overrides:** [`params.yaml`](params.yaml) or [`configs/market.yaml`](configs/market.yaml) when not using `configs/run.yaml`.
 
 Or per session:
 
@@ -242,6 +274,7 @@ dvc repro generate_platform_reports
 | Component | Location |
 |-----------|----------|
 | Platform dashboard | `src/dashboards/app.py` + `pages/` |
+| Portfolio (weights by `weighting` mode) | `src/dashboards/pages/1_Portfolio.py` — [docs](docs/portfolio_dashboard.md) |
 | Signals (FinBERT, stops, regime, VaR) | `src/dashboards/pages/7_Signals.py` — [docs](docs/signals_dashboard.md) |
 | Copilot | `src/copilot/` |
 | REST API | `src/api/` |
@@ -256,7 +289,9 @@ After `pip install -e ".[dev]"`, use the unified CLI for common workflows:
 ```powershell
 aqre config show
 aqre prepare [--profile configs/run.yaml]
-aqre run profile [--dashboard] [--pin-dates]
+aqre run profile              # full pipeline, no UI
+aqre run profile --dashboard  # full pipeline, then Streamlit
+aqre dashboard                # UI only (no repro)
 aqre run phase2 --market-source sample
 aqre run phase3 --market-source sample --dry-run
 aqre run stage merge_features
@@ -270,7 +305,7 @@ aqre dashboard --legacy     # Phase 4 chart explorer
 | `RUN_PROFILE` | Path to run YAML (CI: `configs/run.ci.yaml`) |
 | `MARKET_SOURCE` | `sample` or `yfinance` (plain `dvc repro`; profile commands override when using `aqre run profile`) |
 | `MARKET_PIN_DATES` | `1` = use pinned `start_date` / `end_date` (CI) |
-| `NEWS_SOURCE` | `sample` (default for news ingest) |
+| `NEWS_SOURCE` | `sample` or `yfinance` (`aqre run profile` sets from `mode`; live needs `.[market]` + network) |
 
 Holdings under `data/raw/portfolio/holdings.parquet` are refreshed automatically when tickers no longer match the active profile (e.g. after switching from local `run.yaml` to CI tickers).
 
@@ -293,8 +328,9 @@ Phase 3 risk engine (after `merge_features`):
 ```powershell
 .venv312\Scripts\activate
 $env:MARKET_SOURCE = "sample"
-dvc repro generate_volatility_metrics generate_var_metrics generate_cvar_metrics
-dvc repro generate_correlations generate_portfolio_metrics optimize_portfolios generate_efficient_frontier
+dvc repro generate_correlations optimize_portfolios
+dvc repro generate_portfolio_metrics generate_volatility_metrics generate_var_metrics generate_cvar_metrics
+dvc repro generate_efficient_frontier run_backtests
 ```
 
 ## DVC remote storage (optional)
@@ -410,6 +446,7 @@ Full index: [docs/README.md](docs/README.md)
 
 ### Platform (Phase 5)
 
+- [Portfolio dashboard](docs/portfolio_dashboard.md) — weights by run-profile `weighting` mode
 - [Signals dashboard](docs/signals_dashboard.md) — FinBERT, trailing stops, regime, VaR
 - [System architecture](docs/system_architecture.md)
 - [Copilot architecture](docs/copilot_architecture.md)
@@ -425,4 +462,4 @@ Full index: [docs/README.md](docs/README.md)
 
 ## Roadmap
 
-See [docs/roadmap.md](docs/roadmap.md) for current backlog. Phases 1–5 (sentiment → market features → risk engine → research → platform dashboard/copilot/API) are implemented in this repo; future work includes live news ingestion and extended private-markets research.
+See [docs/roadmap.md](docs/roadmap.md) for current backlog. Phases 1–5 (sentiment → market features → risk engine → research → platform dashboard/copilot/API) are implemented in this repo; future work includes additional news providers (e.g. NewsAPI) and extended private-markets research.

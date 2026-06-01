@@ -10,6 +10,7 @@ from src.analytics.dashboard_kpis import WindowKpis, compute_window_kpis
 from src.analytics.data_bounds import detect_data_bounds, slider_bounds
 from src.copilot.context.builder import PortfolioContext, build_portfolio_context
 from src.utils.config import AppConfig, load_app_config
+from src.utils.paths import display_path
 
 
 def load_app() -> AppConfig:
@@ -39,9 +40,9 @@ def registry():
 
 def load_signals_finbert(app: AppConfig, *, window_days: int = 30):
     """FinBERT summary + daily scores for Signals page."""
-    from src.dashboards.core.signals_loaders import load_finbert_window
+    from src.dashboards.core.signals_loaders import load_finbert_sentiment
 
-    return load_finbert_window(app, window_days=window_days)
+    return load_finbert_sentiment(app, window_days=window_days)
 
 
 def load_signals_regime():
@@ -67,5 +68,5 @@ def scan_experiments() -> pl.DataFrame:
                 name = path.name
                 if name.startswith("experiment_id="):
                     name = name.split("=", 1)[1]
-                rows.append({"kind": kind, "experiment_id": name, "path": str(path)})
+                rows.append({"kind": kind, "experiment_id": name, "path": display_path(path)})
     return pl.DataFrame(rows) if rows else pl.DataFrame({"kind": [], "experiment_id": [], "path": []})

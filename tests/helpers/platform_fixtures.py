@@ -156,8 +156,9 @@ def patch_paths_to_root(monkeypatch, root: Path) -> dict[str, float]:
 
     for target in (
         "src.risk.portfolio.holdings.load_weights",
-        "src.copilot.context.builder.load_weights",
-        "src.risk.portfolio.exposures.load_weights",
+        "src.risk.portfolio.holdings.load_portfolio_weights",
+        "src.copilot.context.builder.load_portfolio_weights",
+        "src.risk.portfolio.exposures.load_portfolio_weights",
     ):
         monkeypatch.setattr(target, _load_weights)
 

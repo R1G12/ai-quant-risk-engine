@@ -31,3 +31,29 @@ def test_get_news_source_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_load_news_unknown_source() -> None:
     with pytest.raises(ValueError, match="Unknown news source"):
         load_news("unknown_api")
+
+
+def test_load_news_yfinance_requires_tickers() -> None:
+    with pytest.raises(ValueError, match="requires tickers"):
+        load_news("yfinance")
+
+
+def test_load_news_yfinance_mocked() -> None:
+    from unittest.mock import patch
+
+    fake = pl.DataFrame(
+        {
+            "date": ["2026-01-01"],
+            "source": ["Reuters"],
+            "title": ["Oil update"],
+            "content": ["Prices fell"],
+            "ticker": ["XOM"],
+        }
+    )
+    with patch(
+        "src.ingestion.adapters.load_yfinance_news",
+        return_value=fake,
+    ):
+        df = load_news("yfinance", tickers=["XOM"])
+    assert df.height == 1
+    assert "ticker" in df.columns

@@ -31,6 +31,15 @@ class Config:
 
 
 @dataclass
+class IngestionConfig:
+    """News ingestion parameters (Phase 1)."""
+
+    source: str = "sample"
+    seed: int = 42
+    max_headlines_per_ticker: int = 10
+
+
+@dataclass
 class MarketConfig:
     """Market data ingestion configuration."""
 
@@ -190,6 +199,21 @@ class PortfolioRunConfig:
     manual_weights: dict[str, float] = field(default_factory=dict)
     anchor_weights: dict[str, float] = field(default_factory=dict)
     risk_free: float = 0.05
+    min_gross_divisor: float = 5.0
+    sentiment_position_sides: bool = True
+    sentiment_sides_window_days: int = 30
+    sentiment_mu_blend: float = 0.3
+    sentiment_mu_mode: str = "vol_scaled"
+    sentiment_mu_scale: float = 0.5
+    sentiment_mu_window_days: int = 30
+    sentiment_mu_hist_window_days: int | None = None
+    sentiment_magnitude_tilt: bool = True
+    sentiment_tilt_beta: float = 0.2
+    sentiment_tilt_cap: float = 2.0
+    regime_sentiment_mix: dict[str, float] = field(
+        default_factory=lambda: {"low": 0.4, "mid": 0.75, "high": 1.0}
+    )
+    use_legacy_bullish_mu: bool = False
 
 
 @dataclass
@@ -220,6 +244,7 @@ class AppConfig:
     """Full application configuration."""
 
     finbert: Config
+    ingestion: IngestionConfig
     market: MarketConfig
     features: FeatureConfig
     sentiment_map: dict[str, Any]
@@ -283,6 +308,13 @@ def load_run_config(path: Path | None = None) -> RunConfig | None:
     port_raw = raw.get("portfolio", {}) or {}
     research_raw = raw.get("research", {}) or {}
     position_sides = {str(k): str(v) for k, v in (port_raw.get("position_sides") or {}).items()}
+    regime_mix_raw = port_raw.get("regime_sentiment_mix") or {}
+    regime_sentiment_mix = (
+        {str(k): float(v) for k, v in regime_mix_raw.items()}
+        if regime_mix_raw
+        else {"low": 0.4, "mid": 0.75, "high": 1.0}
+    )
+    hist_window = port_raw.get("sentiment_mu_hist_window_days")
     return RunConfig(
         mode=str(raw.get("mode", "demo")).lower(),
         profile_path=profile_path.resolve(),
@@ -299,6 +331,19 @@ def load_run_config(path: Path | None = None) -> RunConfig | None:
             manual_weights={str(k): float(v) for k, v in (port_raw.get("manual_weights") or {}).items()},
             anchor_weights={str(k): float(v) for k, v in (port_raw.get("anchor_weights") or {}).items()},
             risk_free=float(port_raw.get("risk_free", 0.05)),
+            min_gross_divisor=float(port_raw.get("min_gross_divisor", 5.0)),
+            sentiment_position_sides=bool(port_raw.get("sentiment_position_sides", True)),
+            sentiment_sides_window_days=int(port_raw.get("sentiment_sides_window_days", 30)),
+            sentiment_mu_blend=float(port_raw.get("sentiment_mu_blend", 0.3)),
+            sentiment_mu_mode=str(port_raw.get("sentiment_mu_mode", "vol_scaled")),
+            sentiment_mu_scale=float(port_raw.get("sentiment_mu_scale", 0.5)),
+            sentiment_mu_window_days=int(port_raw.get("sentiment_mu_window_days", 30)),
+            sentiment_mu_hist_window_days=int(hist_window) if hist_window is not None else None,
+            sentiment_magnitude_tilt=bool(port_raw.get("sentiment_magnitude_tilt", True)),
+            sentiment_tilt_beta=float(port_raw.get("sentiment_tilt_beta", 0.2)),
+            sentiment_tilt_cap=float(port_raw.get("sentiment_tilt_cap", 2.0)),
+            regime_sentiment_mix=regime_sentiment_mix,
+            use_legacy_bullish_mu=bool(port_raw.get("use_legacy_bullish_mu", False)),
         ),
         research=RunResearchOverrides(
             backtest_weight_source=str(research_raw.get("backtest_weight_source", "max_sharpe")),
@@ -308,6 +353,11 @@ def load_run_config(path: Path | None = None) -> RunConfig | None:
 
 def market_source_for_run_mode(mode: str) -> str:
     """Map run profile mode to market adapter source."""
+    return "yfinance" if mode == "live" else "sample"
+
+
+def news_source_for_run_mode(mode: str) -> str:
+    """Map run profile mode to news adapter source."""
     return "yfinance" if mode == "live" else "sample"
 
 
@@ -329,12 +379,13 @@ def run_profile_env(run: RunConfig, *, force: bool = False) -> dict[str, str]:
     if force or not os.getenv("MARKET_SOURCE"):
         env["MARKET_SOURCE"] = market_source_for_run_mode(run.mode)
     if force or not os.getenv("NEWS_SOURCE"):
-        env["NEWS_SOURCE"] = "sample"
+        env["NEWS_SOURCE"] = news_source_for_run_mode(run.mode)
     return env
 
 
 def _apply_run_to_merged(
     run: RunConfig,
+    merged_ingestion: dict[str, Any],
     merged_market: dict[str, Any],
     merged_features: dict[str, Any],
     merged_risk_port: dict[str, Any],
@@ -349,6 +400,8 @@ def _apply_run_to_merged(
         merged_market["rolling_days"] = run.market.rolling_days
     if not os.getenv("MARKET_SOURCE"):
         merged_market["source"] = market_source_for_run_mode(run.mode)
+    if not os.getenv("NEWS_SOURCE"):
+        merged_ingestion["source"] = news_source_for_run_mode(run.mode)
     merged_features["risk_free_rate"] = run.portfolio.risk_free
     merged_risk_port["weight_mode"] = run.portfolio.weighting
     merged_risk_opt["long_only"] = not run.portfolio.allow_shorts
@@ -374,6 +427,7 @@ def load_app_config(run_profile: Path | None = None) -> AppConfig:
     risk_opt_cfg = _load_yaml(CONFIGS_DIR / "risk" / "optimization.yaml")
 
     params = _load_yaml(PROJECT_ROOT / "params.yaml")
+    ingestion_params = params.get("ingestion", {})
     market_params = params.get("market", {})
     feature_params = params.get("features", {})
     risk_params = params.get("risk", {})
@@ -390,6 +444,7 @@ def load_app_config(run_profile: Path | None = None) -> AppConfig:
     merged_res = _merge_dicts(res_cfg, research_params.get("meta", {}))
 
     merged_finbert: dict[str, Any] = {**base_cfg, **dvc_cfg, **finbert_cfg}
+    merged_ingestion: dict[str, Any] = {**ingestion_params}
     merged_market: dict[str, Any] = {**market_cfg, **market_params}
     merged_features: dict[str, Any] = {**features_cfg, **feature_params}
     merged_risk_vol = _merge_dicts(risk_vol_cfg, risk_params.get("volatility", {}))
@@ -400,9 +455,16 @@ def load_app_config(run_profile: Path | None = None) -> AppConfig:
     run = load_run_config(run_profile)
     if run is not None:
         _apply_run_to_merged(
-            run, merged_market, merged_features, merged_risk_port, merged_risk_opt, merged_bt
+            run,
+            merged_ingestion,
+            merged_market,
+            merged_features,
+            merged_risk_port,
+            merged_risk_opt,
+            merged_bt,
         )
 
+    news_source = os.getenv("NEWS_SOURCE", merged_ingestion.get("source", "sample"))
     source = os.getenv("MARKET_SOURCE", merged_market.get("source", "sample"))
 
     finbert = Config(
@@ -414,6 +476,12 @@ def load_app_config(run_profile: Path | None = None) -> AppConfig:
         model_name=str(
             os.getenv("PROJECT_MODEL_NAME", merged_finbert.get("model_name", "ProsusAI/finbert"))
         ),
+    )
+
+    ingestion = IngestionConfig(
+        source=str(news_source),
+        seed=int(merged_ingestion.get("seed", 42)),
+        max_headlines_per_ticker=int(merged_ingestion.get("max_headlines_per_ticker", 10)),
     )
 
     start_date, end_date = resolve_market_dates(merged_market)
@@ -516,6 +584,7 @@ def load_app_config(run_profile: Path | None = None) -> AppConfig:
 
     return AppConfig(
         finbert=finbert,
+        ingestion=ingestion,
         market=market,
         features=features,
         sentiment_map=sentiment_map,

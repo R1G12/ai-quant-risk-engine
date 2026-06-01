@@ -10,7 +10,11 @@ from src.utils.config import AppConfig
 
 
 def build_portfolio_returns(app: AppConfig) -> pl.DataFrame:
-    """Weighted portfolio daily returns: r_p = sum_i w_i * r_i (eager pivot for correctness)."""
+    """Weighted portfolio daily returns: r_p = sum_i w_i * r_i (eager pivot for correctness).
+
+    Weights come from ``load_portfolio_weights()`` (holdings or ``optimal_weights.parquet``).
+    DVC runs ``optimize_portfolios`` before VaR / portfolio metrics so artifacts match.
+    """
     weights = load_weights(app)
     tickers = list(weights.keys())
     wide = load_returns_wide(tickers)

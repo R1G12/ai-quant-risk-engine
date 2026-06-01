@@ -11,7 +11,9 @@ def generate_portfolio_summary(ctx: PortfolioContext) -> str:
     parts = [
         f"Portfolio intelligence snapshot for experiment **{ctx.experiment_id}** "
         f"(as of {ctx.as_of}).",
-        f"Holdings: {', '.join(ctx.tickers)}.",
+        f"Holdings: {', '.join(ctx.tickers)} "
+        f"(weighting: **{ctx.metadata.get('weighting', 'equal')}**, "
+        f"weights from {ctx.metadata.get('weights_from', 'holdings')}).",
     ]
     if k.sharpe is not None:
         parts.append(f"Window Sharpe: **{k.sharpe:.2f}**.")

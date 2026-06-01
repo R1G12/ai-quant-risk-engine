@@ -122,7 +122,10 @@ The command will print a local URL like:
 
 Open that link in your browser.
 
-In the left sidebar, open **Signals** for FinBERT scores, trailing stop levels, HMM regime, and VaR 95% (see [signals_dashboard.md](signals_dashboard.md)).
+In the left sidebar:
+
+- **Portfolio** — weights for your chosen `weighting` mode (`equal`, `manual`, `partial`, `optimised`); see [portfolio_dashboard.md](portfolio_dashboard.md).
+- **Signals** — FinBERT scores, trailing stop levels, HMM regime, and VaR 95%; see [signals_dashboard.md](signals_dashboard.md).
 
 ---
 

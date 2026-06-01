@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.ingestion.adapters import get_news_source, load_news
+from src.market.ticker_validation import format_skip_messages, require_min_tickers, validate_market_tickers
+from src.utils.config import load_app_config
 from src.utils.logger import get_logger
 from src.utils.paths import RAW_DATA_DIR
 
@@ -25,10 +27,23 @@ def fetch_news(output_path: Path | None = None, source: str | None = None) -> Pa
         output_path = RAW_DATA_DIR / "news.csv"
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    resolved = source or get_news_source()
+    app = load_app_config()
+    resolved = (source or get_news_source()).lower()
     LOGGER.info("Ingesting news", extra={"source": resolved, "path": str(output_path)})
 
-    df = load_news(resolved)
+    if resolved == "yfinance":
+        filter_result = validate_market_tickers(app.market.tickers, "yfinance")
+        for line in format_skip_messages(filter_result):
+            LOGGER.warning(line)
+        require_min_tickers(filter_result, context="news ingest")
+        df = load_news(
+            "yfinance",
+            tickers=filter_result.valid,
+            max_headlines_per_ticker=app.ingestion.max_headlines_per_ticker,
+        )
+    else:
+        df = load_news(resolved)
+
     df.write_csv(str(output_path))
 
     LOGGER.info("News CSV written", extra={"rows": df.height, "path": str(output_path)})
