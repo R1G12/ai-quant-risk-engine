@@ -10,6 +10,7 @@ from pathlib import Path
 import polars as pl
 
 from src.market.ticker_validation import format_skip_messages, require_min_tickers, validate_market_tickers
+from src.portfolio.sentiment_sides import effective_position_sides
 from src.portfolio.weights import exposure_summary, resolve_weights
 from src.utils.config import AppConfig, market_source_for_run_mode
 from src.utils.logger import get_logger
@@ -66,7 +67,7 @@ def materialize_run(app: AppConfig) -> Path:
     weighting = port.weighting
     anchor_weights = {k: v for k, v in (port.anchor_weights or {}).items() if k in tickers}
     manual_weights = {k: v for k, v in (port.manual_weights or {}).items() if k in tickers}
-    position_sides = {k: v for k, v in (port.position_sides or {}).items() if k in tickers}
+    position_sides = effective_position_sides(app, tickers) or {}
     dropped_anchors = set(port.anchor_weights or {}) - set(anchor_weights)
     if dropped_anchors:
         LOGGER.warning("Dropped anchor_weights for skipped tickers: %s", sorted(dropped_anchors))
@@ -78,6 +79,7 @@ def materialize_run(app: AppConfig) -> Path:
         manual_weights=manual_weights or None,
         anchor_weights=anchor_weights or None,
         risk_free=port.risk_free,
+        min_gross_divisor=port.min_gross_divisor,
     )
 
     if weighting in ("equal", "manual"):
@@ -103,6 +105,7 @@ def materialize_run(app: AppConfig) -> Path:
         "skipped_tickers": filter_result.skipped,
         "skip_reasons": filter_result.reasons,
         "weighting": weighting,
+        "position_sides": position_sides or None,
         "holdings_path": str(holdings_path.relative_to(PROJECT_ROOT)),
         "weights": {t: float(w) for t, w in zip(tickers, weights, strict=False)},
         "exposure": exp,

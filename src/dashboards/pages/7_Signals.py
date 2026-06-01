@@ -11,7 +11,7 @@ from src.dashboards.core.loaders import load_app, load_kpis
 from src.dashboards.core.signals_loaders import (
     HMM_REGIME_LABELS,
     REGIME_HISTORY_OBS,
-    load_finbert_window,
+    load_finbert_sentiment,
     load_latest_regime,
     load_trailing_stops_table,
     regime_history_window,
@@ -31,7 +31,7 @@ st.caption(
     "Stop levels match the trading notebook policy (bull / neutral / bear)."
 )
 
-summary, daily = load_finbert_window(app, window_days=30)
+summary, daily = load_finbert_sentiment(app, window_days=30)
 kpis = load_kpis(app, None)
 regime_label, regimes_df = load_latest_regime()
 

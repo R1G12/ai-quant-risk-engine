@@ -10,6 +10,7 @@ import polars as pl
 from src.features.wide_returns import load_returns_wide
 from src.risk.correlations.covariance import ledoit_wolf_shrinkage, sample_covariance_matrix
 from src.risk.optimization.constraints import PortfolioConstraints
+from src.portfolio.sentiment_sides import effective_position_sides
 from src.portfolio.weights import (
     optimize_max_sharpe_gross,
     optimize_partial_weights,
@@ -17,7 +18,7 @@ from src.portfolio.weights import (
 )
 from src.risk.optimization.markowitz import max_sharpe_weights, min_variance_weights, portfolio_stats
 from src.risk.pipeline._io import write_single_parquet
-from src.risk.portfolio.holdings import load_weights
+from src.risk.portfolio.holdings import read_holdings_weights
 from src.risk.portfolio.returns import build_portfolio_returns
 from src.utils.config import load_app_config
 from src.utils.logger import get_logger
@@ -70,6 +71,7 @@ def _run_portfolio_kw(app) -> dict:
             "manual_weights": p.manual_weights or None,
             "anchor_weights": p.anchor_weights or None,
             "risk_free": p.risk_free,
+            "min_gross_divisor": p.min_gross_divisor,
         }
     return {
         "allow_shorts": opt.allow_shorts,
@@ -78,6 +80,7 @@ def _run_portfolio_kw(app) -> dict:
         "manual_weights": None,
         "anchor_weights": None,
         "risk_free": app.features.risk_free_rate,
+        "min_gross_divisor": 5.0,
     }
 
 
@@ -91,14 +94,18 @@ def _max_sharpe_weights(
     opt = app.risk.optimization
     weighting = opt.weighting
     kw = _run_portfolio_kw(app)
+    kw["position_sides"] = effective_position_sides(app, tickers, kw.get("position_sides"))
 
     if weighting == "optimised":
         return optimize_max_sharpe_gross(
             mean_r,
             cov,
+            tickers,
             risk_free=kw["risk_free"],
             allow_shorts=kw["allow_shorts"],
             max_gross_per_ticker=kw["max_gross_per_ticker"],
+            min_gross_divisor=kw["min_gross_divisor"],
+            position_sides=kw["position_sides"],
         )
 
     if weighting == "partial":
@@ -110,6 +117,7 @@ def _max_sharpe_weights(
             risk_free=kw["risk_free"],
             allow_shorts=kw["allow_shorts"],
             max_gross_per_ticker=kw["max_gross_per_ticker"],
+            min_gross_divisor=kw["min_gross_divisor"],
             position_sides=kw["position_sides"],
         )
 
@@ -125,7 +133,7 @@ def run() -> None:
     app = load_app_config()
     ensure_dir(RISK_OPTIMIZATION_DIR)
 
-    tickers = list(load_weights(app).keys())
+    tickers = list(read_holdings_weights(app).keys())
     port = build_portfolio_returns(app)
     wide = load_returns_wide(tickers)
 

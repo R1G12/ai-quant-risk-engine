@@ -7,7 +7,7 @@ import polars as pl
 from src.backtesting.engine.walk_forward import run_historical_backtest
 from src.backtesting.metrics.performance import max_drawdown, sharpe_ratio
 from src.features.wide_returns import load_returns_wide
-from src.risk.portfolio.holdings import load_weights
+from src.risk.portfolio.holdings import load_portfolio_weights
 from src.utils.config import load_app_config
 from src.utils.experiment import log_research_metrics
 from src.utils.io import sink_lazy_parquet
@@ -16,28 +16,16 @@ from src.utils.paths import (
     EXPERIMENTS_BACKTESTS_DIR,
     METRICS_DIR,
     RESEARCH_BACKTESTS_DIR,
-    RISK_OPT_WEIGHTS_PATH,
     ensure_dir,
 )
 
 LOGGER = get_logger(__name__)
 
 
-def _load_weights(app) -> dict[str, float]:
-    if RISK_OPT_WEIGHTS_PATH.is_file():
-        df = pl.read_parquet(RISK_OPT_WEIGHTS_PATH)
-        df = df.filter(pl.col("asset") != "_stats_")
-        if app.research.backtest.weight_source:
-            sub = df.filter(pl.col("portfolio") == app.research.backtest.weight_source)
-            if sub.height:
-                return dict(zip(sub["asset"].to_list(), sub["weight"].to_list(), strict=False))
-    return load_weights(app)
-
-
 def run() -> None:
     app = load_app_config()
     exp_id = app.research.meta.experiment_id
-    weights = _load_weights(app)
+    weights = load_portfolio_weights(app)
     tickers = list(weights.keys())
 
     wide = load_returns_wide(tickers)

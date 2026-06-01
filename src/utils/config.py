@@ -199,6 +199,21 @@ class PortfolioRunConfig:
     manual_weights: dict[str, float] = field(default_factory=dict)
     anchor_weights: dict[str, float] = field(default_factory=dict)
     risk_free: float = 0.05
+    min_gross_divisor: float = 5.0
+    sentiment_position_sides: bool = True
+    sentiment_sides_window_days: int = 30
+    sentiment_mu_blend: float = 0.3
+    sentiment_mu_mode: str = "vol_scaled"
+    sentiment_mu_scale: float = 0.5
+    sentiment_mu_window_days: int = 30
+    sentiment_mu_hist_window_days: int | None = None
+    sentiment_magnitude_tilt: bool = True
+    sentiment_tilt_beta: float = 0.2
+    sentiment_tilt_cap: float = 2.0
+    regime_sentiment_mix: dict[str, float] = field(
+        default_factory=lambda: {"low": 0.4, "mid": 0.75, "high": 1.0}
+    )
+    use_legacy_bullish_mu: bool = False
 
 
 @dataclass
@@ -293,6 +308,13 @@ def load_run_config(path: Path | None = None) -> RunConfig | None:
     port_raw = raw.get("portfolio", {}) or {}
     research_raw = raw.get("research", {}) or {}
     position_sides = {str(k): str(v) for k, v in (port_raw.get("position_sides") or {}).items()}
+    regime_mix_raw = port_raw.get("regime_sentiment_mix") or {}
+    regime_sentiment_mix = (
+        {str(k): float(v) for k, v in regime_mix_raw.items()}
+        if regime_mix_raw
+        else {"low": 0.4, "mid": 0.75, "high": 1.0}
+    )
+    hist_window = port_raw.get("sentiment_mu_hist_window_days")
     return RunConfig(
         mode=str(raw.get("mode", "demo")).lower(),
         profile_path=profile_path.resolve(),
@@ -309,6 +331,19 @@ def load_run_config(path: Path | None = None) -> RunConfig | None:
             manual_weights={str(k): float(v) for k, v in (port_raw.get("manual_weights") or {}).items()},
             anchor_weights={str(k): float(v) for k, v in (port_raw.get("anchor_weights") or {}).items()},
             risk_free=float(port_raw.get("risk_free", 0.05)),
+            min_gross_divisor=float(port_raw.get("min_gross_divisor", 5.0)),
+            sentiment_position_sides=bool(port_raw.get("sentiment_position_sides", True)),
+            sentiment_sides_window_days=int(port_raw.get("sentiment_sides_window_days", 30)),
+            sentiment_mu_blend=float(port_raw.get("sentiment_mu_blend", 0.3)),
+            sentiment_mu_mode=str(port_raw.get("sentiment_mu_mode", "vol_scaled")),
+            sentiment_mu_scale=float(port_raw.get("sentiment_mu_scale", 0.5)),
+            sentiment_mu_window_days=int(port_raw.get("sentiment_mu_window_days", 30)),
+            sentiment_mu_hist_window_days=int(hist_window) if hist_window is not None else None,
+            sentiment_magnitude_tilt=bool(port_raw.get("sentiment_magnitude_tilt", True)),
+            sentiment_tilt_beta=float(port_raw.get("sentiment_tilt_beta", 0.2)),
+            sentiment_tilt_cap=float(port_raw.get("sentiment_tilt_cap", 2.0)),
+            regime_sentiment_mix=regime_sentiment_mix,
+            use_legacy_bullish_mu=bool(port_raw.get("use_legacy_bullish_mu", False)),
         ),
         research=RunResearchOverrides(
             backtest_weight_source=str(research_raw.get("backtest_weight_source", "max_sharpe")),

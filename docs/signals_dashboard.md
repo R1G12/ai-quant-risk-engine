@@ -43,6 +43,8 @@ Three tabs:
   on rows attributed by `ticker` (live yfinance) or publisher → ticker via [`configs/sentiment_map.yaml`](../configs/sentiment_map.yaml) (sample).
 - **Visuals**: bar chart of scores; table (`bullish_ratio`, `negative_ratio`, `article_count`, `avg_confidence`); optional daily line chart for one ticker.
 
+**Link to portfolio weights:** with `portfolio.sentiment_position_sides: true` (default in [`configs/run.yaml`](../configs/run.yaml)), the **same 30-day score** drives **long/short sign** for optimization when a ticker is not listed in `position_sides`: score ≤ −0.3 → short (if `allow_shorts: true`), score ≥ +0.3 → long. Scores between ±0.3 do not force a short. The Portfolio page shows **signed weights** from optimization, not the raw FinBERT bar directly. Details: [Run profile — FinBERT position sides](run_profile.md#finbert-position-sides), [Portfolio dashboard](portfolio_dashboard.md#long--short-signs-finbert--position_sides).
+
 ### Trailing stops
 
 Derived from each ticker’s 30-day sentiment score using [`src/portfolio/stops.py`](../src/portfolio/stops.py) (same rules as the notebook).
@@ -70,6 +72,7 @@ Each tranche exits **⅓** of the remaining position when breached (see `simulat
 |-------|------|
 | Streamlit page | `src/dashboards/pages/7_Signals.py` |
 | Data loaders | `src/dashboards/core/signals_loaders.py` |
+| FinBERT window + position-side merge | `src/portfolio/sentiment_sides.py` |
 | Stop policy | `src/portfolio/stops.py` |
 | Re-exports | `src/dashboards/core/loaders.py` (`load_signals_finbert`, `load_signals_regime`) |
 | Tests | `tests/test_portfolio_stops.py`, `tests/test_signals_loaders.py` |
@@ -94,6 +97,7 @@ Edit constants in `src/portfolio/stops.py` or call `build_stops(score, use_manua
 ## Related docs
 
 - [Run profile](run_profile.md) — tickers and holdings
+- [Portfolio dashboard](portfolio_dashboard.md) — effective weights in the UI by `weighting` mode
 - [Portfolio theory](portfolio_theory.md) — weighting and optimization
 - [Risk models](risk_models.md) — VaR and HMM regimes
 - [System architecture](system_architecture.md) — Phase 5 layers

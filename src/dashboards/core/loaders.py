@@ -39,9 +39,9 @@ def registry():
 
 def load_signals_finbert(app: AppConfig, *, window_days: int = 30):
     """FinBERT summary + daily scores for Signals page."""
-    from src.dashboards.core.signals_loaders import load_finbert_window
+    from src.dashboards.core.signals_loaders import load_finbert_sentiment
 
-    return load_finbert_window(app, window_days=window_days)
+    return load_finbert_sentiment(app, window_days=window_days)
 
 
 def load_signals_regime():

@@ -7,14 +7,14 @@ from datetime import date, timedelta
 import polars as pl
 import pytest
 
-from src.dashboards.core.signals_loaders import load_finbert_window
+from src.portfolio.sentiment_sides import load_finbert_window
 from src.utils.config import load_app_config
 
 
 @pytest.fixture
 def sentiment_parquet(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "src.dashboards.core.signals_loaders.PROCESSED_SENTIMENT_PATH",
+        "src.portfolio.sentiment_sides.PROCESSED_SENTIMENT_PATH",
         tmp_path / "sentiment.parquet",
     )
     end = date.today()
@@ -35,7 +35,7 @@ def sentiment_parquet(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_load_finbert_window_maps_source(monkeypatch: pytest.MonkeyPatch, sentiment_parquet: None) -> None:
     monkeypatch.setattr(
-        "src.dashboards.core.signals_loaders.load_weights",
+        "src.risk.portfolio.holdings.load_weights",
         lambda _app: {"AAPL": 0.5, "XOM": 0.5},
     )
     app = load_app_config()
