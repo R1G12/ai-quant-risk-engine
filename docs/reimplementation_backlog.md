@@ -14,13 +14,13 @@ After touching Signals loaders, portfolio optimization, or related config:
 
 | Feature | Code | Tests | Docs | Verified |
 |---------|------|-------|------|----------|
-| Shared FinBERT loader | `src/portfolio/sentiment_sides.py` | `test_sentiment_position_sides.py`, `test_signals_loaders.py` | [run_profile.md](run_profile.md) | 2026-06-01 — regression bundle + full pytest (182 passed); working tree atop `46c2541` |
-| Min gross `1/(5×n)` | `src/portfolio/weights.py` | `test_min_gross_weights.py` | [portfolio_theory.md](portfolio_theory.md) | 2026-06-01 — same |
-| FinBERT position sides | `prepare.py`, `optimization_stage.py` | `test_sentiment_position_sides.py` | [run_profile.md](run_profile.md#finbert-position-sides) | 2026-06-01 — same |
-| Blended μ + regime mixer + tilt | `expected_returns.py`, `regime_policy.py`, `sentiment_tilt.py` | `test_expected_returns.py`, `test_regime_policy.py`, `test_sentiment_tilt.py` | [run_profile.md](run_profile.md#sentiment-in-optimization) | 2026-06-01 — same |
-| Regime chart (365d, fixed axis, counts) | `signals_loaders.py`, `7_Signals.py` | `test_signals_regime_chart.py` | [signals_dashboard.md](signals_dashboard.md) | 2026-06-01 — same |
-| Portfolio dashboard guide | — | — | [portfolio_dashboard.md](portfolio_dashboard.md) | 2026-06-01 — same |
-| Local LLM guide | — | — | [local_llm_integration.md](local_llm_integration.md) | 2026-06-01 — same |
+| Shared FinBERT loader | `src/portfolio/sentiment_sides.py` | `test_sentiment_position_sides.py`, `test_signals_loaders.py` | [run_profile.md](run_profile.md) | `1695ba93` |
+| Min gross `1/(5×n)` | `src/portfolio/weights.py` | `test_min_gross_weights.py` | [portfolio_theory.md](portfolio_theory.md) | `ab03eac3` |
+| FinBERT position sides | `prepare.py`, `optimization_stage.py` | `test_sentiment_position_sides.py` | [run_profile.md](run_profile.md#finbert-position-sides) | `172cd967` (+ `6205d0f8` opt stage) |
+| Blended μ + regime mixer + tilt | `expected_returns.py`, `regime_policy.py`, `sentiment_tilt.py` | `test_expected_returns.py`, `test_regime_policy.py`, `test_sentiment_tilt.py` | [run_profile.md](run_profile.md#sentiment-in-optimization) | `6205d0f8` |
+| Regime chart (365d, fixed axis, counts) | `signals_loaders.py`, `7_Signals.py` | `test_signals_regime_chart.py` | [signals_dashboard.md](signals_dashboard.md) | `d699289d` (helpers in `1695ba93`) |
+| Portfolio dashboard guide | — | — | [portfolio_dashboard.md](portfolio_dashboard.md) | `bf97bf10` |
+| Local LLM guide | — | — | [local_llm_integration.md](local_llm_integration.md) | `bf97bf10` |
 
 ## Agent rules
 
