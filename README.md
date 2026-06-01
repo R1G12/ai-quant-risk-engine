@@ -90,6 +90,7 @@ flowchart TB
 ### Phase 5
 - Multi-page Streamlit platform, copilot, FastAPI, monitoring, governance reports (`aqre dashboard`, `aqre copilot`, `aqre api`)
 - **Signals** sidebar page: FinBERT scores (30d), 3-tranche trailing stops, HMM regime, VaR 95% — see [docs/signals_dashboard.md](docs/signals_dashboard.md)
+- **Tracker** sidebar page: Excel trade ledger, optimal-weight vs actual comparison, performance chart — see [docs/portfolio_tracker.md](docs/portfolio_tracker.md); `aqre tracker ingest`
 
 ## Project structure
 
@@ -243,6 +244,7 @@ dvc repro generate_platform_reports
 |-----------|----------|
 | Platform dashboard | `src/dashboards/app.py` + `pages/` |
 | Signals (FinBERT, stops, regime, VaR) | `src/dashboards/pages/7_Signals.py` — [docs](docs/signals_dashboard.md) |
+| Tracker (Excel trades, positions, charts) | `src/dashboards/pages/8_Tracker.py` — [docs](docs/portfolio_tracker.md) |
 | Copilot | `src/copilot/` |
 | REST API | `src/api/` |
 | Monitoring | `src/monitoring/` |
@@ -335,7 +337,7 @@ See [docs/mlops.md](docs/mlops.md) for more detail.
 
 ## Continuous integration (GitHub Actions)
 
-Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on `main` / `master` / `Romain_Phase_1`.
+Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on `main` / `master` / `Romain_Tracking_step`.
 
 | Step | What runs |
 |------|-----------|

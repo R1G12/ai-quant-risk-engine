@@ -1,4 +1,15 @@
 stages:
+  ingest_portfolio_trades:
+    cmd: python -m src.portfolio.tracker.ingest
+    deps:
+    - data/input/portfolio/dummy_portfolio.xlsx
+    - configs/portfolio_tracker.yaml
+    - src/portfolio/tracker/
+    - src/utils/
+    outs:
+    - data/processed/portfolio/trades.parquet
+    - data/processed/portfolio/_tracker_metadata.json
+
   ingest:
     cmd: python -m src.ingestion.ingest
     deps:
@@ -405,6 +416,13 @@ metrics:
 - metrics/research_evaluation/metrics.json
 - metrics/research_compare/metrics.json
 - metrics/research_reports/metrics.json
+- metrics/research_simulations/metrics.json
+- metrics/research_backtests/metrics.json
+- metrics/research_stress/metrics.json
+- metrics/research_scenarios/metrics.json
+- metrics/research_evaluation/metrics.json
+- metrics/research_compare/metrics.json
+- metrics/research_reports/metrics.json
 plots:
 - metrics/sentiment/plots/metrics:
     x: step
@@ -483,6 +501,20 @@ plots:
 - metrics/research_backtests/plots/metrics:
     x: step
 - metrics/research_stress/plots/metrics:
+    x: step
+- metrics/research_evaluation/plots/metrics:
+    x: step
+- metrics/research_compare/plots/metrics:
+    x: step
+- metrics/research_reports/plots/metrics:
+    x: step
+- metrics/research_simulations/plots/metrics:
+    x: step
+- metrics/research_backtests/plots/metrics:
+    x: step
+- metrics/research_stress/plots/metrics:
+    x: step
+- metrics/research_scenarios/plots/metrics:
     x: step
 - metrics/research_evaluation/plots/metrics:
     x: step

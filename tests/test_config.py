@@ -17,3 +17,5 @@ def test_load_app_config_market_sample() -> None:
     assert app.risk.volatility.ewma_span == 21
     assert 0.95 in app.risk.var.confidence_levels
     assert app.research.simulation.seed == 42
+    assert app.tracker.excel_primary == "input_trades.xlsx"
+    assert app.tracker.trades_parquet.endswith("trades.parquet")

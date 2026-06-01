@@ -1,0 +1,7 @@
+input_dir: data/input/portfolio
+excel_primary: input_trades.xlsx
+excel_fallback: dummy_portfolio.xlsx
+trades_parquet: data/processed/portfolio/trades.parquet
+metadata_json: data/processed/portfolio/_tracker_metadata.json
+sheet_name: trades
+default_portfolio_value: 1000000

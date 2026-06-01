@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, master, Romain_Phase_1]
+    branches: [main, master, Romain_Tracking_step]
   pull_request:
     branches: [main, master]
 

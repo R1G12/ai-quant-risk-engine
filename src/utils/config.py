@@ -89,6 +89,19 @@ class VarRiskConfig:
 
 
 @dataclass
+class PortfolioTrackerConfig:
+    """Excel trade ledger → parquet tracker paths."""
+
+    input_dir: str = "data/input/portfolio"
+    excel_primary: str = "input_trades.xlsx"
+    excel_fallback: str = "dummy_portfolio.xlsx"
+    trades_parquet: str = "data/processed/portfolio/trades.parquet"
+    metadata_json: str = "data/processed/portfolio/_tracker_metadata.json"
+    sheet_name: str = "trades"
+    default_portfolio_value: float = 1_000_000.0
+
+
+@dataclass
 class PortfolioRiskConfig:
     """Phase 3 portfolio analytics parameters."""
 
@@ -225,6 +238,7 @@ class AppConfig:
     sentiment_map: dict[str, Any]
     risk: RiskConfig
     research: ResearchConfig
+    tracker: PortfolioTrackerConfig
     run: RunConfig | None = None
 
 
@@ -372,6 +386,7 @@ def load_app_config(run_profile: Path | None = None) -> AppConfig:
     risk_var_cfg = _load_yaml(CONFIGS_DIR / "risk" / "var.yaml")
     risk_port_cfg = _load_yaml(CONFIGS_DIR / "risk" / "portfolio.yaml")
     risk_opt_cfg = _load_yaml(CONFIGS_DIR / "risk" / "optimization.yaml")
+    tracker_cfg = _load_yaml(CONFIGS_DIR / "portfolio_tracker.yaml")
 
     params = _load_yaml(PROJECT_ROOT / "params.yaml")
     market_params = params.get("market", {})
@@ -514,6 +529,16 @@ def load_app_config(run_profile: Path | None = None) -> AppConfig:
         ),
     )
 
+    tracker = PortfolioTrackerConfig(
+        input_dir=str(tracker_cfg.get("input_dir", "data/input/portfolio")),
+        excel_primary=str(tracker_cfg.get("excel_primary", "input_trades.xlsx")),
+        excel_fallback=str(tracker_cfg.get("excel_fallback", "dummy_portfolio.xlsx")),
+        trades_parquet=str(tracker_cfg.get("trades_parquet", "data/processed/portfolio/trades.parquet")),
+        metadata_json=str(tracker_cfg.get("metadata_json", "data/processed/portfolio/_tracker_metadata.json")),
+        sheet_name=str(tracker_cfg.get("sheet_name", "trades")),
+        default_portfolio_value=float(tracker_cfg.get("default_portfolio_value", 1_000_000.0)),
+    )
+
     return AppConfig(
         finbert=finbert,
         market=market,
@@ -521,5 +546,6 @@ def load_app_config(run_profile: Path | None = None) -> AppConfig:
         sentiment_map=sentiment_map,
         risk=risk,
         research=research,
+        tracker=tracker,
         run=run,
     )

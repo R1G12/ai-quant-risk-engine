@@ -158,6 +158,13 @@ def prepare_cmd(
     app = load_app_config(profile_path)
     path = materialize_run(app)
     typer.echo(f"Holdings written: {path}")
+    try:
+        from src.portfolio.tracker.ingest import ingest_trades
+
+        trades_path = ingest_trades(app)
+        typer.echo(f"Tracker trades: {trades_path}")
+    except FileNotFoundError as exc:
+        typer.echo(f"Tracker ingest skipped: {exc}", err=True)
     manifest_path = PROJECT_ROOT / "data" / "run_manifest.json"
     typer.echo(f"Manifest: {manifest_path}")
     if manifest_path.is_file():
@@ -167,6 +174,22 @@ def prepare_cmd(
         skipped = manifest.get("skipped_tickers") or []
         if skipped:
             typer.echo(f"Skipped {len(skipped)} unavailable ticker(s): {', '.join(skipped)}")
+
+
+tracker_app = typer.Typer(help="Portfolio trade ledger (Excel → parquet).")
+app.add_typer(tracker_app, name="tracker")
+
+
+@tracker_app.command("ingest")
+def tracker_ingest(
+    force: bool = typer.Option(False, "--force", help="Re-ingest even if parquet is newer"),
+) -> None:
+    """Read input_trades.xlsx (or dummy_portfolio.xlsx) into trades.parquet."""
+    from src.portfolio.tracker.ingest import ingest_trades
+    from src.utils.config import load_app_config
+
+    out = ingest_trades(load_app_config(), force=force)
+    typer.echo(f"Trades written: {out}")
 
 
 @run_app.command("all")
