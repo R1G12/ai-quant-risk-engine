@@ -16,6 +16,9 @@ portfolio:
   manual_weights: {}
   anchor_weights: {}
   risk_free: 0.05
+  sentiment_position_sides: false
+  sentiment_mu_blend: 0
+  sentiment_magnitude_tilt: false
 
 research:
   backtest_weight_source: max_sharpe
