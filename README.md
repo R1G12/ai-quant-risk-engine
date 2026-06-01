@@ -89,6 +89,7 @@ flowchart TB
 
 ### Phase 5
 - Multi-page Streamlit platform, copilot, FastAPI, monitoring, governance reports (`aqre dashboard`, `aqre copilot`, `aqre api`)
+- **Signals** sidebar page: FinBERT scores (30d), 3-tranche trailing stops, HMM regime, VaR 95% — see [docs/signals_dashboard.md](docs/signals_dashboard.md)
 
 ## Project structure
 
@@ -241,6 +242,7 @@ dvc repro generate_platform_reports
 | Component | Location |
 |-----------|----------|
 | Platform dashboard | `src/dashboards/app.py` + `pages/` |
+| Signals (FinBERT, stops, regime, VaR) | `src/dashboards/pages/7_Signals.py` — [docs](docs/signals_dashboard.md) |
 | Copilot | `src/copilot/` |
 | REST API | `src/api/` |
 | Monitoring | `src/monitoring/` |
@@ -408,6 +410,7 @@ Full index: [docs/README.md](docs/README.md)
 
 ### Platform (Phase 5)
 
+- [Signals dashboard](docs/signals_dashboard.md) — FinBERT, trailing stops, regime, VaR
 - [System architecture](docs/system_architecture.md)
 - [Copilot architecture](docs/copilot_architecture.md)
 - [Decision engine](docs/decision_engine.md)

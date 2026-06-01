@@ -1,0 +1,98 @@
+# Signals dashboard (Phase 5)
+
+The **Signals** page is a sidebar module in the Phase 5 Streamlit platform. It surfaces trading-style controls aligned with [`notebooks/trading_risk_manager_final.ipynb`](../notebooks/trading_risk_manager_final.ipynb): FinBERT sentiment per ticker, three tranche trailing stops, the current HMM regime, and portfolio VaR 95%.
+
+## How to open it
+
+```powershell
+aqre run profile --dashboard
+# or after a prior pipeline run:
+aqre dashboard
+```
+
+In the left sidebar, select **Signals** (`src/dashboards/pages/7_Signals.py`).
+
+The legacy chart explorer (`aqre dashboard --legacy` → `src/analytics/streamlit_dashboard.py`) does **not** include this page.
+
+## Prerequisites (DVC artifacts)
+
+| Tab / metric | Required pipeline output | DVC stages (minimum) |
+|--------------|--------------------------|----------------------|
+| FinBERT scores | `data/processed/sentiment.parquet` | `ingest` → `preprocess` → `sentiment` |
+| Trailing stops | Same + holdings tickers in `configs/run.yaml` | As above |
+| HMM regime | `data/risk/portfolio/regimes.parquet` | `generate_portfolio_metrics` |
+| VaR 95% | `data/risk/var/var_metrics.parquet` (or research performance summary) | `generate_var_metrics` |
+
+Full profile run:
+
+```powershell
+aqre prepare
+aqre run profile --dashboard
+```
+
+## Page layout
+
+Three tabs:
+
+### FinBERT
+
+- **30-day window** of FinBERT-labelled news, aggregated per holding ticker.
+- **Sentiment score** (per ticker):  
+  `mean(positive labels) − mean(negative labels)`  
+  on rows mapped from news `source` → ticker via [`configs/sentiment_map.yaml`](../configs/sentiment_map.yaml).
+- **Visuals**: bar chart of scores; table (`bullish_ratio`, `negative_ratio`, `article_count`, `avg_confidence`); optional daily line chart for one ticker.
+
+### Trailing stops
+
+Derived from each ticker’s 30-day sentiment score using [`src/portfolio/stops.py`](../src/portfolio/stops.py) (same rules as the notebook).
+
+| Sentiment score | Regime tag | Stop levels (drawdown from peak) |
+|-----------------|------------|----------------------------------|
+| ≥ 0.3 | Bullish-derived | -8%, -14%, -20% |
+| ≤ -0.3 | Bearish-derived | -3%, -6%, -10% |
+| else | Neutral-derived | -5%, -10%, -15% |
+
+Each tranche exits **⅓** of the remaining position when breached (see `simulate_trailing_stops` in [`src/portfolio/weights.py`](../src/portfolio/weights.py) for path simulation).
+
+- **Tranche 1** = tightest stop (fires first): e.g. **-5%** for neutral — the least negative level.
+- **Visuals**: full table; heatmap of stop levels; tranche-1 bar chart; per-ticker “ladder” plot.
+
+### Regime & VaR
+
+- **Current HMM regime**: latest `regime_label` from `data/risk/portfolio/regimes.parquet` (Gaussian HMM on portfolio returns).
+- **Portfolio VaR 95%**: same metric as the platform home KPI (`compute_window_kpis` in `src/analytics/dashboard_kpis.py`).
+- **Visual**: regime history (last 120 observations).
+
+## Code map
+
+| Piece | Path |
+|-------|------|
+| Streamlit page | `src/dashboards/pages/7_Signals.py` |
+| Data loaders | `src/dashboards/core/signals_loaders.py` |
+| Stop policy | `src/portfolio/stops.py` |
+| Re-exports | `src/dashboards/core/loaders.py` (`load_signals_finbert`, `load_signals_regime`) |
+| Tests | `tests/test_portfolio_stops.py`, `tests/test_signals_loaders.py` |
+
+## Sentiment → ticker mapping
+
+News rows in `data/processed/sentiment.parquet` use `source` (e.g. `Bloomberg`, `Reuters`). The dashboard maps them to tickers using `configs/sentiment_map.yaml`:
+
+```yaml
+source_to_ticker:
+  Bloomberg: AAPL
+  Reuters: XOM
+default_ticker: MARKET
+```
+
+Only tickers in **current holdings** (`data/raw/portfolio/holdings.parquet` from `aqre prepare`) appear in the Signals tables. If a ticker has no mapped news in the 30-day window, it will not appear in the FinBERT tab.
+
+## Extending stop rules
+
+Edit constants in `src/portfolio/stops.py` or call `build_stops(score, use_manual=True, manual_levels=..., manual_fractions=...)`. Keep notebook and dashboard in sync if you change thresholds.
+
+## Related docs
+
+- [Run profile](run_profile.md) — tickers and holdings
+- [Portfolio theory](portfolio_theory.md) — weighting and optimization
+- [Risk models](risk_models.md) — VaR and HMM regimes
+- [System architecture](system_architecture.md) — Phase 5 layers

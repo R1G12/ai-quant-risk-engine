@@ -40,6 +40,7 @@
 ## Phase 5 – Portfolio intelligence platform (MVP complete)
 
 - [x] Multi-page institutional dashboard (`src/dashboards/`)
+- [x] Signals page — FinBERT 30d, trailing stops, HMM regime, VaR 95% ([signals_dashboard.md](signals_dashboard.md))
 - [x] Rule-based portfolio copilot (`src/copilot/`)
 - [x] FastAPI serving layer (`src/api/`)
 - [x] Monitoring: health, quality, drift, alerts (`src/monitoring/`)

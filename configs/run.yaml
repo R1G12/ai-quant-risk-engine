@@ -5,21 +5,18 @@
 mode: live  # demo | live
 
 market:
-  tickers: [CVX, XLE, QQQ, GLD, GS, SPY, TLT, IWM, IBB, XLF, XLK, XLB, XLC, XLI, XLU, XLV, XLY, XLRE]
+  tickers: [SMH, MSFT, NVDA, USO, IWM, BABA, PDD]
   use_rolling_window: true
   rolling_days: 365
 
 portfolio:
-  weighting: partial  # equal | manual | partial | optimised
+  weighting: optimised  # equal | manual | partial | optimised
   allow_shorts: true
   max_gross_per_ticker: 0.5
   position_sides:
-    QQQ: short
   manual_weights: {}
   anchor_weights:
-    CVX: 0.2
-    GLD: 0.1
-  risk_free: 0.05
+  risk_free: 0.03
 
 research:
   backtest_weight_source: max_sharpe

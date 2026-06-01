@@ -37,6 +37,20 @@ def registry():
     return build_chart_registry()
 
 
+def load_signals_finbert(app: AppConfig, *, window_days: int = 30):
+    """FinBERT summary + daily scores for Signals page."""
+    from src.dashboards.core.signals_loaders import load_finbert_window
+
+    return load_finbert_window(app, window_days=window_days)
+
+
+def load_signals_regime():
+    """Latest HMM regime label and history."""
+    from src.dashboards.core.signals_loaders import load_latest_regime
+
+    return load_latest_regime()
+
+
 def scan_experiments() -> pl.DataFrame:
     from src.utils.paths import EXPERIMENTS_BACKTESTS_DIR, EXPERIMENTS_SIMULATIONS_DIR, EXPERIMENTS_STRESS_DIR
 
