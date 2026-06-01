@@ -14,16 +14,19 @@ portfolio:
   allow_shorts: true
   max_gross_per_ticker: 0.5
   position_sides: {}  # explicit long/short overrides FinBERT sides when set
-  # sentiment_position_sides: true   # short if 30d score <= -0.3 (bear), long if >= 0.3
-  # sentiment_sides_window_days: 30
-  # sentiment_mu_blend: 0.3          # blend hist + FinBERT expected returns
-  # sentiment_mu_mode: vol_scaled     # vol_scaled | fixed
-  # sentiment_mu_scale: 0.5
-  # sentiment_mu_window_days: 30
-  # sentiment_magnitude_tilt: true
-  # sentiment_tilt_beta: 0.2
-  # sentiment_tilt_cap: 2.0
-  # regime_sentiment_mix: { low: 0.4, mid: 0.75, high: 1.0 }
+  sentiment_position_sides: true   # short if 30d score <= -0.3 (bear), long if >= 0.3
+  sentiment_sides_window_days: 30
+  sentiment_mu_blend: 0.3          # blend hist + FinBERT expected returns (optimised/partial)
+  sentiment_mu_mode: vol_scaled    # vol_scaled | fixed
+  sentiment_mu_scale: 0.5
+  sentiment_mu_window_days: 30
+  sentiment_magnitude_tilt: true
+  sentiment_tilt_beta: 0.2
+  sentiment_tilt_cap: 2.0
+  regime_sentiment_mix:
+    low: 0.4
+    mid: 0.75
+    high: 1.0
   manual_weights: {}
   anchor_weights:
   risk_free: 0.03

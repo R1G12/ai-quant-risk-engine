@@ -5,6 +5,7 @@ from __future__ import annotations
 import polars as pl
 import streamlit as st
 
+from src.dashboards.core.display import format_exception
 from src.dashboards.core.loaders import load_app, load_copilot_context
 from src.dashboards.core.theme import apply_theme, page_header
 from src.copilot.attribution.portfolio import attribution_summary
@@ -20,7 +21,7 @@ st.caption(f"Weighting mode from run profile: **{weighting}** (`configs/run.yaml
 try:
     ctx = load_copilot_context(app)
 except Exception as exc:
-    st.error(f"Could not load portfolio context: {exc}")
+    st.error(f"Could not load portfolio context: {format_exception(exc)}")
     st.stop()
 
 weights_from = str(ctx.metadata.get("weights_from", "holdings"))
@@ -53,7 +54,7 @@ st.dataframe(ctx.exposures, width="stretch")
 try:
     exp = attribution_summary(ctx)
 except Exception as exc:
-    st.error(f"Attribution failed: {exc}")
+    st.error(f"Attribution failed: {format_exception(exc)}")
 else:
     st.subheader(exp.title)
     st.markdown(exp.summary)

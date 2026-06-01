@@ -71,6 +71,10 @@ dvc repro optimize_portfolios
 # or: aqre run profile
 ```
 
+### Sentiment blend and magnitude tilt
+
+For `optimised` / `partial`, weights reflect **blended expected returns** (historical + 30d FinBERT), **HMM regime scaling** of sentiment influence, and optional **post-optimization magnitude tilt**. See [Run profile — Sentiment in optimization](run_profile.md#sentiment-in-optimization). Check `data/risk/optimization/_metadata.json` for `alpha_eff`, `regime`, and `tilt_applied`.
+
 ### Optimization row label
 
 The parquet file stores multiple portfolios (`min_variance`, `max_sharpe`, …). The UI uses the row matching **`research.backtest_weight_source`** in `run.yaml` (default **`max_sharpe`**).
@@ -80,8 +84,10 @@ The parquet file stores multiple portfolios (`min_variance`, `max_sharpe`, …).
 | UI section | Required output | DVC stage (minimum) |
 |------------|-----------------|---------------------|
 | Weights (`equal` / `manual`) | `data/raw/portfolio/holdings.parquet` | `aqre prepare` |
-| Weights (`optimised` / `partial`) | `data/risk/optimization/optimal_weights.parquet` | `optimize_portfolios` |
-| Exposures & attribution | Merged risk artifacts + portfolio returns | Through `generate_portfolio_metrics` |
+| Weights (`optimised` / `partial`) | `data/risk/optimization/optimal_weights.parquet` | `optimize_portfolios` (runs **before** portfolio metrics / VaR) |
+| Exposures & attribution | Merged risk artifacts + portfolio returns | `generate_portfolio_metrics` after optimize |
+| Sharpe / max DD (home, Signals) | Backtest `equity_curve.parquet` | `run_backtests` after optimize |
+| VaR 95%, vol, drawdown charts | `var/`, `portfolio/` artifacts | `generate_*` stages after optimize (see [optimization_pipeline.md](optimization_pipeline.md)) |
 
 Full profile:
 
@@ -90,10 +96,12 @@ aqre prepare
 aqre run profile --dashboard
 ```
 
-If **`optimised`** or **`partial`** is set but `optimal_weights.parquet` is missing, the Portfolio page shows a **warning** and falls back to `holdings.parquet` until you run:
+If **`optimised`** or **`partial`** is set but `optimal_weights.parquet` is missing, the Portfolio page shows a **warning** and falls back to `holdings.parquet` until you run optimization.
+
+After changing weights or sentiment settings, refresh the **full Phase 3 tail** so KPIs and charts match:
 
 ```powershell
-dvc repro optimize_portfolios
+dvc repro optimize_portfolios generate_portfolio_metrics generate_var_metrics run_backtests
 # or: aqre run profile
 ```
 
@@ -112,6 +120,8 @@ dvc repro optimize_portfolios
 | Effective weights | `src/risk/portfolio/holdings.py` — `load_portfolio_weights()`, `portfolio_weighting_mode()` |
 | Prepare / holdings file | `src/portfolio/prepare.py` |
 | FinBERT → `position_sides` | `src/portfolio/sentiment_sides.py` |
+| Blended μ + regime | `src/portfolio/expected_returns.py`, `src/portfolio/regime_policy.py` |
+| Magnitude tilt | `src/portfolio/sentiment_tilt.py` |
 | Optimization output | `src/risk/pipeline/optimization_stage.py` |
 | Copilot context | `src/copilot/context/builder.py` |
 

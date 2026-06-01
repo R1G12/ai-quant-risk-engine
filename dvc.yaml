@@ -134,10 +134,54 @@ stages:
     outs:
     - data/features/merged/
 
+  generate_correlations:
+    cmd: python -m src.risk.pipeline.correlations_stage
+    deps:
+    - data/features/merged/
+    - src/risk/
+    - configs/risk/
+    params:
+    - risk.optimization.shrinkage
+    - features.correlation_window
+    outs:
+    - data/risk/correlations/
+
+  optimize_portfolios:
+    cmd: python -m src.risk.pipeline.optimization_stage
+    deps:
+    - data/features/merged/
+    - data/risk/correlations/
+    - data/raw/portfolio/holdings.parquet
+    - src/risk/
+    - configs/risk/
+    - configs/run.yaml
+    params:
+    - risk.optimization.long_only
+    - risk.optimization.max_weight
+    - risk.optimization.shrinkage
+    outs:
+    - data/risk/optimization/
+
+  generate_portfolio_metrics:
+    cmd: python -m src.risk.pipeline.portfolio_stage
+    deps:
+    - data/features/merged/
+    - data/risk/optimization/
+    - src/risk/
+    - configs/risk/
+    - configs/run.yaml
+    params:
+    - risk.portfolio.benchmark_ticker
+    - risk.portfolio.rolling_metrics_window
+    - risk.hmm_n_regimes
+    outs:
+    - data/risk/portfolio/
+
   generate_volatility_metrics:
     cmd: python -m src.risk.pipeline.volatility_stage
     deps:
     - data/features/merged/
+    - data/risk/optimization/
     - src/risk/
     - src/utils/
     - configs/
@@ -153,7 +197,7 @@ stages:
     cmd: python -m src.risk.pipeline.var_stage
     deps:
     - data/features/merged/
-    - data/risk/volatility/
+    - data/risk/optimization/
     - src/risk/
     - configs/risk/
     params:
@@ -167,6 +211,7 @@ stages:
     cmd: python -m src.risk.pipeline.cvar_stage
     deps:
     - data/features/merged/
+    - data/risk/optimization/
     - data/risk/var/
     - src/risk/
     - configs/risk/
@@ -175,46 +220,6 @@ stages:
     - risk.var.seed
     outs:
     - data/risk/cvar/
-
-  generate_correlations:
-    cmd: python -m src.risk.pipeline.correlations_stage
-    deps:
-    - data/features/merged/
-    - src/risk/
-    - configs/risk/
-    params:
-    - risk.optimization.shrinkage
-    - features.correlation_window
-    outs:
-    - data/risk/correlations/
-
-  generate_portfolio_metrics:
-    cmd: python -m src.risk.pipeline.portfolio_stage
-    deps:
-    - data/features/merged/
-    - data/risk/volatility/
-    - src/risk/
-    - configs/risk/
-    params:
-    - risk.portfolio.benchmark_ticker
-    - risk.portfolio.rolling_metrics_window
-    - risk.hmm_n_regimes
-    outs:
-    - data/risk/portfolio/
-
-  optimize_portfolios:
-    cmd: python -m src.risk.pipeline.optimization_stage
-    deps:
-    - data/features/merged/
-    - data/risk/correlations/
-    - src/risk/
-    - configs/risk/
-    params:
-    - risk.optimization.long_only
-    - risk.optimization.max_weight
-    - risk.optimization.shrinkage
-    outs:
-    - data/risk/optimization/
 
   generate_efficient_frontier:
     cmd: python -m src.risk.pipeline.frontier_stage
@@ -444,6 +449,20 @@ metrics:
 - metrics/research_evaluation/metrics.json
 - metrics/research_compare/metrics.json
 - metrics/research_reports/metrics.json
+- metrics/research_simulations/metrics.json
+- metrics/research_backtests/metrics.json
+- metrics/research_stress/metrics.json
+- metrics/research_scenarios/metrics.json
+- metrics/research_evaluation/metrics.json
+- metrics/research_compare/metrics.json
+- metrics/research_reports/metrics.json
+- metrics/research_simulations/metrics.json
+- metrics/research_backtests/metrics.json
+- metrics/research_stress/metrics.json
+- metrics/research_scenarios/metrics.json
+- metrics/research_evaluation/metrics.json
+- metrics/research_compare/metrics.json
+- metrics/research_reports/metrics.json
 plots:
 - metrics/sentiment/plots/metrics:
     x: step
@@ -522,6 +541,34 @@ plots:
 - metrics/research_backtests/plots/metrics:
     x: step
 - metrics/research_stress/plots/metrics:
+    x: step
+- metrics/research_evaluation/plots/metrics:
+    x: step
+- metrics/research_compare/plots/metrics:
+    x: step
+- metrics/research_reports/plots/metrics:
+    x: step
+- metrics/research_simulations/plots/metrics:
+    x: step
+- metrics/research_backtests/plots/metrics:
+    x: step
+- metrics/research_stress/plots/metrics:
+    x: step
+- metrics/research_scenarios/plots/metrics:
+    x: step
+- metrics/research_evaluation/plots/metrics:
+    x: step
+- metrics/research_compare/plots/metrics:
+    x: step
+- metrics/research_reports/plots/metrics:
+    x: step
+- metrics/research_simulations/plots/metrics:
+    x: step
+- metrics/research_backtests/plots/metrics:
+    x: step
+- metrics/research_stress/plots/metrics:
+    x: step
+- metrics/research_scenarios/plots/metrics:
     x: step
 - metrics/research_evaluation/plots/metrics:
     x: step

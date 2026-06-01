@@ -86,6 +86,35 @@ REPORTS_GOVERNANCE_DIR = REPORTS_DIR / "governance"
 PLATFORM_METRICS_DIR = METRICS_DIR / "platform"
 
 
+def display_path(path: Union[pathlib.Path, str], *, base: pathlib.Path | None = None) -> str:
+    """Project-relative path for UI (forward slashes), or basename if outside repo."""
+    p = pathlib.Path(path).expanduser()
+    root = (base or PROJECT_ROOT).resolve()
+    try:
+        rel = p.resolve().relative_to(root)
+        return rel.as_posix()
+    except (ValueError, OSError):
+        return p.name
+
+
+def sanitize_display_text(text: str, *, base: pathlib.Path | None = None) -> str:
+    """Strip absolute project-root prefixes from user-visible strings (e.g. Streamlit errors)."""
+    if not text:
+        return text
+    root = (base or PROJECT_ROOT).resolve()
+    out = str(text)
+    for prefix in (str(root), str(root).replace("\\", "/")):
+        if not prefix:
+            continue
+        out = out.replace(prefix, "")
+        # Windows long-path prefix
+        if prefix.startswith("\\\\?\\"):
+            continue
+        alt = "\\\\?\\" + prefix if not prefix.startswith("\\\\?\\") else prefix
+        out = out.replace(alt, "")
+    return out.replace("\\\\", "/").lstrip("/\\")
+
+
 def ensure_dir(path: Union[pathlib.Path, str]) -> pathlib.Path:
     """Create path (including parents) if missing."""
     p = pathlib.Path(path).expanduser().resolve()

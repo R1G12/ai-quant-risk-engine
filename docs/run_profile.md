@@ -55,6 +55,11 @@ Live news requires `pip install -e ".[market]"` and network access for `dvc repr
 - **position_sides**: force sign per ticker, e.g. `QQQ: short` (overrides FinBERT inference).
 - **sentiment_position_sides** (default `true`): infer long/short for tickers **not** listed in `position_sides` (see [FinBERT position sides](#finbert-position-sides) below).
 - **sentiment_sides_window_days** (default `30`): lookback for FinBERT side inference (matches the Signals FinBERT tab).
+- **sentiment_mu_blend** (default `0.3`): blend weight α on FinBERT-based expected returns vs historical μ (see [Sentiment in optimization](#sentiment-in-optimization)).
+- **sentiment_mu_mode** (`vol_scaled` \| `fixed`), **sentiment_mu_scale**, **sentiment_mu_window_days**, **sentiment_mu_hist_window_days**: μ blend knobs.
+- **sentiment_magnitude_tilt** (default `true`), **sentiment_tilt_beta**, **sentiment_tilt_cap**: post–max-Sharpe gross tilt toward bullish names.
+- **regime_sentiment_mix**: per HMM label (`low` / `mid` / `high`) multiplier on α and tilt strength.
+- **use_legacy_bullish_mu** (default `false`): if α=0, use old full-sample `bullish_ratio` nudge instead of FinBERT blend.
 - **anchor_weights**: used when `weighting: partial`; sum(|anchors|) must be &lt; 1.
 - **risk_free**: annual rate for optimization Sharpe.
 - **min_gross_divisor** (default `5`): minimum gross per ticker is `1 / (min_gross_divisor × n_tickers)` (long or short); applies to all weighting modes.
@@ -87,7 +92,7 @@ portfolio:
     PDD: long   # force long even if FinBERT is bearish
 ```
 
-**What this does *not* do:** it does not replace max-Sharpe optimization. The optimizer still chooses **magnitudes** on gross budget; inferred sides only fix **sign** (long vs short) before/after optimization via `apply_position_sides` in [`src/portfolio/weights.py`](../src/portfolio/weights.py). Expected returns in optimization still use historical returns plus optional `bullish_ratio` nudge — not the Signals bar score directly.
+**What this does *not* do:** it does not replace max-Sharpe optimization. Inferred sides only fix **sign** (long vs short). **Magnitudes** come from blended expected returns and optional [magnitude tilt](#sentiment-in-optimization) (see below).
 
 **Where it runs:**
 
@@ -102,12 +107,35 @@ portfolio:
 
 **Code:** [`src/portfolio/sentiment_sides.py`](../src/portfolio/sentiment_sides.py) — `effective_position_sides()`, thresholds from [`src/portfolio/stops.py`](../src/portfolio/stops.py).
 
+### Sentiment in optimization
+
+For `weighting: optimised` or `partial`, `optimize_portfolios` builds expected returns in [`src/portfolio/expected_returns.py`](../src/portfolio/expected_returns.py):
+
+\[
+\mu_i = (1 - \alpha_{\mathrm{eff}})\,\mu^{\mathrm{hist}}_i + \alpha_{\mathrm{eff}}\,\mu^{\mathrm{sent}}_i,\quad
+\alpha_{\mathrm{eff}} = \texttt{sentiment\_mu\_blend} \times m(\text{HMM regime})
+\]
+
+- \(\mu^{\mathrm{hist}}\): mean daily returns from `risk_dataset.parquet` (optional cap via `sentiment_mu_hist_window_days`).
+- \(\mu^{\mathrm{sent}}\): 30d FinBERT `sentiment_score` mapped to daily units — `vol_scaled` → `sentiment_mu_scale × score × σ_i`, or `fixed` → `sentiment_mu_scale × score × 10⁻⁴`.
+- \(m(\text{regime})\): from **`regime_sentiment_mix`** and latest label in `data/risk/portfolio/regimes.parquet` ([`src/portfolio/regime_policy.py`](../src/portfolio/regime_policy.py)). Example default: `low: 0.4`, `mid: 0.75`, `high: 1.0`.
+
+**Post-optimization tilt** ([`src/portfolio/sentiment_tilt.py`](../src/portfolio/sentiment_tilt.py)): when `sentiment_magnitude_tilt: true`, max-Sharpe weights are scaled by z-scored FinBERT scores (`sentiment_tilt_beta`, capped by `sentiment_tilt_cap`), then re-normalized to gross budget 1 with min gross floors.
+
+**Stacking with position sides:** sides (±0.3) → blended μ → max-Sharpe → magnitude tilt. Tune α and β moderately to avoid double-counting sentiment.
+
+**Metadata:** `data/risk/optimization/_metadata.json` records `regime`, `alpha_eff`, `beta_eff`, `mu_mode`, `tilt_applied`.
+
+**CI profile:** [`configs/run.ci.yaml`](../configs/run.ci.yaml) sets `sentiment_mu_blend: 0` and `sentiment_magnitude_tilt: false` for stable sample runs.
+
+**Disable:** `sentiment_mu_blend: 0`, `sentiment_magnitude_tilt: false`, or `use_legacy_bullish_mu: true` for the old `bullish_ratio` nudge only.
+
 ### Weights vs dashboard
 
 | Mode | `holdings.parquet` after `prepare` | Weights shown in Streamlit / copilot |
 |------|-----------------------------------|--------------------------------------|
 | `equal`, `manual` | Final weights | Same file |
-| `optimised`, `partial` | Equal **placeholder** (for early pipeline) | `data/risk/optimization/optimal_weights.parquet` after `optimize_portfolios` |
+| `optimised`, `partial` | Equal **placeholder** in holdings (for early DVC only) | `optimal_weights.parquet` after `optimize_portfolios`; VaR/regimes/backtest run **after** optimize in DVC order |
 
 See [portfolio_dashboard.md](portfolio_dashboard.md) for the Portfolio page and `load_portfolio_weights()`.
 

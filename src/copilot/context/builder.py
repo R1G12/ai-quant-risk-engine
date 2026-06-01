@@ -19,6 +19,7 @@ from src.utils.paths import (
     RISK_PORTFOLIO_METRICS_PATH,
     RISK_REGIMES_PATH,
     RISK_VAR_DIR,
+    display_path,
 )
 
 
@@ -92,7 +93,7 @@ def build_portfolio_context(
         ),
     }
     if RISK_OPT_WEIGHTS_PATH.is_file():
-        meta["optimization_weights_path"] = str(RISK_OPT_WEIGHTS_PATH)
+        meta["optimization_weights_path"] = display_path(RISK_OPT_WEIGHTS_PATH)
 
     return PortfolioContext(
         experiment_id=app.research.meta.experiment_id,

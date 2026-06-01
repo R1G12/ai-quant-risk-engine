@@ -10,6 +10,7 @@ from src.analytics.dashboard_kpis import WindowKpis, compute_window_kpis
 from src.analytics.data_bounds import detect_data_bounds, slider_bounds
 from src.copilot.context.builder import PortfolioContext, build_portfolio_context
 from src.utils.config import AppConfig, load_app_config
+from src.utils.paths import display_path
 
 
 def load_app() -> AppConfig:
@@ -67,5 +68,5 @@ def scan_experiments() -> pl.DataFrame:
                 name = path.name
                 if name.startswith("experiment_id="):
                     name = name.split("=", 1)[1]
-                rows.append({"kind": kind, "experiment_id": name, "path": str(path)})
+                rows.append({"kind": kind, "experiment_id": name, "path": display_path(path)})
     return pl.DataFrame(rows) if rows else pl.DataFrame({"kind": [], "experiment_id": [], "path": []})

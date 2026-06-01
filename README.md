@@ -52,13 +52,13 @@ flowchart TB
   gen_vol --> merge[merge_features]
   gen_tech --> merge
   gen_sent --> merge
-  merge --> risk_vol[generate_volatility_metrics]
+  merge --> risk_corr[generate_correlations]
+  risk_corr --> risk_opt[optimize_portfolios]
+  risk_opt --> risk_port[generate_portfolio_metrics]
+  risk_port --> risk_vol[generate_volatility_metrics]
   risk_vol --> risk_var[generate_var_metrics]
   risk_var --> risk_cvar[generate_cvar_metrics]
-  merge --> risk_corr[generate_correlations]
-  risk_corr --> risk_port[generate_portfolio_metrics]
-  risk_port --> risk_opt[optimize_portfolios]
-  risk_opt --> risk_front[generate_efficient_frontier]
+  risk_cvar --> risk_front[generate_efficient_frontier]
   risk_front --> gen_sim[generate_simulations]
   gen_sim --> run_bt[run_backtests]
   gen_sim --> run_stress[run_stress_tests]
@@ -96,8 +96,8 @@ flowchart TB
 
 ### Phase 5
 - Multi-page Streamlit platform, copilot, FastAPI, monitoring, governance reports (`aqre dashboard`, `aqre copilot`, `aqre api`)
-- **Portfolio** page: weights follow `portfolio.weighting` (`equal` / `manual` / `partial` / `optimised`); optional **FinBERT-inferred long/short** (`sentiment_position_sides`, ±0.3 bands) — [docs/portfolio_dashboard.md](docs/portfolio_dashboard.md)
-- **Signals** sidebar page: FinBERT scores (30d), 3-tranche trailing stops, HMM regime, VaR 95% (same scores feed position sides when enabled) — [docs/signals_dashboard.md](docs/signals_dashboard.md)
+- **Portfolio** page: weights follow `portfolio.weighting`; **FinBERT sides**, **blended expected returns**, **HMM regime mixer**, and optional **magnitude tilt** for `optimised` / `partial` — [docs/portfolio_dashboard.md](docs/portfolio_dashboard.md)
+- **Signals** sidebar page: FinBERT scores (30d), 3-tranche trailing stops, HMM regime, VaR 95% (same scores feed optimization when enabled) — [docs/signals_dashboard.md](docs/signals_dashboard.md)
 
 ## Project structure
 
@@ -328,8 +328,9 @@ Phase 3 risk engine (after `merge_features`):
 ```powershell
 .venv312\Scripts\activate
 $env:MARKET_SOURCE = "sample"
-dvc repro generate_volatility_metrics generate_var_metrics generate_cvar_metrics
-dvc repro generate_correlations generate_portfolio_metrics optimize_portfolios generate_efficient_frontier
+dvc repro generate_correlations optimize_portfolios
+dvc repro generate_portfolio_metrics generate_volatility_metrics generate_var_metrics generate_cvar_metrics
+dvc repro generate_efficient_frontier run_backtests
 ```
 
 ## DVC remote storage (optional)

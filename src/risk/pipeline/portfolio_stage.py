@@ -7,7 +7,7 @@ import polars as pl
 from src.risk.pipeline._io import write_single_parquet
 from src.risk.portfolio.analytics import add_portfolio_analytics, max_drawdown
 from src.risk.portfolio.exposures import load_exposure_table
-from src.risk.portfolio.holdings import ensure_holdings
+from src.risk.portfolio.holdings import ensure_holdings, load_portfolio_weights, portfolio_weighting_mode
 from src.risk.portfolio.returns import build_portfolio_returns
 from src.risk.regimes.hmm import fit_hmm_regimes
 from src.utils.config import load_app_config
@@ -31,6 +31,12 @@ def run() -> None:
     ensure_holdings(app)
     ensure_dir(RISK_PORTFOLIO_DIR)
 
+    weights = load_portfolio_weights(app)
+    LOGGER.info(
+        "Portfolio return series use weighting=%s (%d names)",
+        portfolio_weighting_mode(app),
+        len(weights),
+    )
     port = build_portfolio_returns(app)
     metrics = add_portfolio_analytics(port.lazy(), app).collect()
     validate_schema_file(metrics, "risk_portfolio")

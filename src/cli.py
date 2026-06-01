@@ -31,12 +31,12 @@ PHASE_STAGES: dict[str, list[str]] = {
         "merge_features",
     ],
     "phase3": [
+        "generate_correlations",
+        "optimize_portfolios",
+        "generate_portfolio_metrics",
         "generate_volatility_metrics",
         "generate_var_metrics",
         "generate_cvar_metrics",
-        "generate_correlations",
-        "generate_portfolio_metrics",
-        "optimize_portfolios",
         "generate_efficient_frontier",
     ],
     "phase4": [

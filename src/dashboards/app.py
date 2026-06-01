@@ -6,6 +6,7 @@ import streamlit as st
 
 from datetime import date, timedelta
 
+from src.dashboards.core.display import format_exception
 from src.dashboards.core.json_safe import json_safe
 from src.dashboards.core.theme import apply_theme, page_header
 from src.dashboards.core.loaders import load_app, load_kpis, load_bounds
@@ -37,7 +38,7 @@ if raw_bounds.max_date < date.today() - timedelta(days=30):
 try:
     kpis = load_kpis(app, None)
 except Exception as exc:
-    st.error(f"KPI calculation failed: {exc}")
+    st.error(f"KPI calculation failed: {format_exception(exc)}")
     from src.analytics.dashboard_kpis import WindowKpis
 
     kpis = WindowKpis(None, None, None)
@@ -62,7 +63,7 @@ try:
     ctx = build_portfolio_context(app)
     st.markdown(generate_portfolio_summary(ctx))
 except Exception as exc:
-    st.error(f"Could not build portfolio summary: {exc}")
+    st.error(f"Could not build portfolio summary: {format_exception(exc)}")
     ctx = None
 
 st.subheader("Quick copilot")
@@ -80,6 +81,6 @@ if question and ctx is not None:
         with st.expander("Evidence (audit trail)"):
             st.json(json_safe(resp.evidence))
     except Exception as exc:
-        st.error(f"Copilot error: {exc}")
+        st.error(f"Copilot error: {format_exception(exc)}")
 elif question and ctx is None:
     st.warning("Load portfolio context first (run Phase 2-3 pipeline).")

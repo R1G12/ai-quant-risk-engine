@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import streamlit as st
 
+from src.dashboards.core.display import format_exception
 from src.analytics.charts.base import ChartSpec
 from src.analytics.charts.context import ChartContext
 
@@ -31,7 +32,7 @@ def render_chart_picker(
     try:
         fig = spec.builder(ctx)
     except Exception as exc:
-        st.error(f"Chart `{spec.id}` failed to build: {exc}")
+        st.error(f"Chart `{spec.id}` failed to build: {format_exception(exc)}")
         return
 
     if fig is None:

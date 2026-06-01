@@ -106,6 +106,8 @@ def materialize_run(app: AppConfig) -> Path:
         "skip_reasons": filter_result.reasons,
         "weighting": weighting,
         "position_sides": position_sides or None,
+        "sentiment_mu_blend": port.sentiment_mu_blend,
+        "sentiment_magnitude_tilt": port.sentiment_magnitude_tilt,
         "holdings_path": str(holdings_path.relative_to(PROJECT_ROOT)),
         "weights": {t: float(w) for t, w in zip(tickers, weights, strict=False)},
         "exposure": exp,
