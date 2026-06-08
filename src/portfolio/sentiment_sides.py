@@ -8,7 +8,7 @@ from typing import Literal
 import polars as pl
 
 from src.ingestion.news_schema import apply_ticker_mapping
-from src.portfolio.stops import SENTIMENT_BEAR_THRESHOLD, SENTIMENT_BULL_THRESHOLD
+from src.portfolio.stops import resolve_trailing_stop_policy
 from src.utils.config import AppConfig
 from src.utils.paths import PROCESSED_SENTIMENT_PATH
 
@@ -119,11 +119,21 @@ def finbert_scores_by_ticker(
     return {str(r["ticker"]): float(r["sentiment_score"]) for r in summary.iter_rows(named=True)}
 
 
-def infer_position_side(score: float) -> Side | None:
+def infer_position_side(
+    score: float,
+    *,
+    bull_threshold: float | None = None,
+    bear_threshold: float | None = None,
+) -> Side | None:
     """Return long/short when score crosses bull/bear bands; else None (default long)."""
-    if score <= SENTIMENT_BEAR_THRESHOLD:
+    from src.portfolio.stops import DEFAULT_TRAILING_STOP_POLICY
+
+    default = DEFAULT_TRAILING_STOP_POLICY
+    bull = default.bull_threshold if bull_threshold is None else bull_threshold
+    bear = default.bear_threshold if bear_threshold is None else bear_threshold
+    if score <= bear:
         return "short"
-    if score >= SENTIMENT_BULL_THRESHOLD:
+    if score >= bull:
         return "long"
     return None
 
@@ -132,6 +142,9 @@ def merge_position_sides_from_sentiment(
     tickers: list[str],
     explicit_sides: dict[str, str],
     scores: dict[str, float],
+    *,
+    bull_threshold: float | None = None,
+    bear_threshold: float | None = None,
 ) -> dict[str, str]:
     """YAML position_sides override FinBERT inference per ticker."""
     merged: dict[str, str] = {}
@@ -139,7 +152,11 @@ def merge_position_sides_from_sentiment(
         if t in explicit_sides:
             merged[t] = explicit_sides[t].strip().lower()
             continue
-        side = infer_position_side(scores.get(t, 0.0))
+        side = infer_position_side(
+            scores.get(t, 0.0),
+            bull_threshold=bull_threshold,
+            bear_threshold=bear_threshold,
+        )
         merged[t] = side if side is not None else "long"
     return merged
 
@@ -156,5 +173,12 @@ def effective_position_sides(
     if not port.sentiment_position_sides or not port.allow_shorts:
         return explicit or None
     scores = finbert_scores_by_ticker(app, tickers, window_days=port.sentiment_sides_window_days)
-    merged = merge_position_sides_from_sentiment(tickers, explicit, scores)
+    stop_policy = resolve_trailing_stop_policy(app)
+    merged = merge_position_sides_from_sentiment(
+        tickers,
+        explicit,
+        scores,
+        bull_threshold=stop_policy.bull_threshold,
+        bear_threshold=stop_policy.bear_threshold,
+    )
     return merged or None

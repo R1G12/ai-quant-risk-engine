@@ -16,9 +16,16 @@ from src.portfolio.tracker.performance import (
     model_equity_curve,
     tracker_comparison_bounds,
 )
+from src.portfolio.tracker.currency import (
+    apply_display_currency_to_closed,
+    apply_display_currency_to_open,
+    currency_context,
+    exposure_notional_sgd,
+    load_fx_table,
+)
 from src.portfolio.tracker.pnl import attach_unrealized_pnl, exposure_by_ticker
 from src.portfolio.tracker.positions import build_closed_positions, build_open_positions
-from src.portfolio.tracker.prices import close_panel, latest_mark_prices, latest_mark_prices_with_info
+from src.portfolio.tracker.prices import close_panel, latest_mark_prices_with_info
 from src.utils.config import AppConfig
 from src.utils.paths import PROJECT_ROOT
 
@@ -71,6 +78,12 @@ def load_tracker_bundle(app: AppConfig, *, refresh: bool = True) -> dict:
     open_pos = attach_unrealized_pnl(open_pos, marks)
     exposure = exposure_by_ticker(open_pos, marks)
 
+    fx = load_fx_table(app, trades, mark_info)
+    if fx is not None:
+        open_pos = apply_display_currency_to_open(open_pos, trades, mark_info, fx)
+        closed_pos = apply_display_currency_to_closed(closed_pos, trades, fx)
+        exposure = exposure_notional_sgd(open_pos, mark_info, fx)
+
     return {
         "trades": trades,
         "open": open_pos,
@@ -79,6 +92,7 @@ def load_tracker_bundle(app: AppConfig, *, refresh: bool = True) -> dict:
         "mark_info": mark_info,
         "exposure": exposure,
         "metadata": load_tracker_metadata(app),
+        "currency": currency_context(app, fx),
     }
 
 
@@ -102,10 +116,18 @@ def load_comparison_curves(
     if model.height and "equity_indexed" not in model.columns:
         model = model.rename({"equity": "equity_indexed"})
 
-    actual, first_trade = actual_equity_curve(trades, panel, initial_nav, dr.start, dr.end)
+    mark_info = latest_mark_prices_with_info(
+        trades["ticker"].unique().to_list() if trades.height else [],
+        app,
+    )
+    fx = load_fx_table(app, trades, mark_info)
+    actual, first_trade = actual_equity_curve(
+        trades, panel, initial_nav, dr.start, dr.end, fx=fx,
+    )
     return {
         "model": model,
         "actual": actual,
         "first_trade_date": first_trade,
         "panel": panel,
+        "currency": currency_context(app, fx),
     }

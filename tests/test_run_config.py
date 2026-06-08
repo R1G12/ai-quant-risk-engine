@@ -23,6 +23,11 @@ portfolio:
   max_gross_per_ticker: 0.5
   anchor_weights:
     CVX: 0.4
+  trailing_stops:
+    bull_threshold: 0.25
+    bear:
+      levels: [-0.02, -0.04, -0.06]
+      fractions: [0.5, 0.25, 0.25]
 research:
   backtest_weight_source: max_sharpe
 """.strip(),
@@ -38,6 +43,8 @@ def test_load_run_config_live(run_yaml: Path) -> None:
     assert run.market.tickers == ["CVX", "XLE", "QQQ"]
     assert run.portfolio.weighting == "partial"
     assert run.portfolio.anchor_weights["CVX"] == pytest.approx(0.4)
+    assert run.portfolio.trailing_stops.bull_threshold == pytest.approx(0.25)
+    assert run.portfolio.trailing_stops.bear.levels == (-0.02, -0.04, -0.06)
 
 
 def test_run_profile_env_live(run_yaml: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -41,11 +41,11 @@ Three tabs:
 - **30-day window** of FinBERT-labelled news, aggregated per holding ticker.
 - **Ticker mapping:** uses the `ticker` column when present (yfinance ingest); otherwise `source` → ticker via [`configs/sentiment_map.yaml`](../configs/sentiment_map.yaml) (sample news).
 - **Sentiment score** (per ticker): `mean(positive labels) − mean(negative labels)`.
-- **Visuals**: bar chart of scores; table (`bullish_ratio`, `negative_ratio`, `article_count`, `avg_confidence`); optional daily line chart for one ticker.
+- **Visuals**: bar chart of scores; table (`bullish_ratio`, `negative_ratio`, `article_count`, `avg_confidence`); **last 3 calendar days for all tickers** on one chart (forward-filled when a day has no new articles, with a red stale-data banner per ticker).
 
 ### Trailing stops
 
-Derived from each ticker’s 30-day sentiment score using [`src/portfolio/stops.py`](../src/portfolio/stops.py) (same rules as the notebook).
+Derived from each ticker’s 30-day sentiment score using [`src/portfolio/stops.py`](../src/portfolio/stops.py) (same rules as the notebook). **Configure levels in [`configs/run.yaml`](../configs/run.yaml)** under `portfolio.trailing_stops`.
 
 | Sentiment score | Regime tag | Stop levels (drawdown from peak) |
 |-----------------|------------|----------------------------------|
@@ -93,7 +93,7 @@ Only tickers in **current holdings** (`data/raw/portfolio/holdings.parquet` from
 
 ## Extending stop rules
 
-Edit constants in `src/portfolio/stops.py` or call `build_stops(score, use_manual=True, manual_levels=..., manual_fractions=...)`. Keep notebook and dashboard in sync if you change thresholds.
+Edit `portfolio.trailing_stops` in **`configs/run.yaml`** (then restart the dashboard). Optional override in code: `build_stops(score, policy=..., use_manual=True)`.
 
 ## Related docs
 

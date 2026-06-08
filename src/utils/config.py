@@ -10,6 +10,7 @@ from typing import Any
 
 import yaml
 
+from src.portfolio.stops import DEFAULT_TRAILING_STOP_POLICY, TrailingStopPolicy, trailing_stop_policy_from_dict
 from src.utils.paths import CONFIGS_DIR, PROJECT_ROOT
 
 
@@ -218,6 +219,7 @@ class PortfolioRunConfig:
         default_factory=lambda: {"low": 0.4, "mid": 0.75, "high": 1.0}
     )
     use_legacy_bullish_mu: bool = False
+    trailing_stops: TrailingStopPolicy = field(default_factory=lambda: DEFAULT_TRAILING_STOP_POLICY)
 
 
 @dataclass
@@ -344,6 +346,7 @@ def load_run_config(path: Path | None = None) -> RunConfig | None:
                 for k, v in (port_raw.get("regime_sentiment_mix") or {"low": 0.4, "mid": 0.75, "high": 1.0}).items()
             },
             use_legacy_bullish_mu=bool(port_raw.get("use_legacy_bullish_mu", False)),
+            trailing_stops=trailing_stop_policy_from_dict(port_raw.get("trailing_stops")),
         ),
         research=RunResearchOverrides(
             backtest_weight_source=str(research_raw.get("backtest_weight_source", "max_sharpe")),

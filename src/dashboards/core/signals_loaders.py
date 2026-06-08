@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import polars as pl
 
 from src.portfolio.sentiment_sides import load_finbert_window as _load_finbert_window
 from src.portfolio.sentiment_sides import map_sentiment_dataframe
-from src.portfolio.stops import TrailingStopSet, trailing_stop_set
+from src.portfolio.stops import TrailingStopSet, resolve_trailing_stop_policy, trailing_stop_set
 from src.risk.portfolio.holdings import load_weights
 from src.utils.config import AppConfig
 from src.utils.paths import PROCESSED_SENTIMENT_PATH, RISK_REGIMES_PATH
@@ -16,6 +16,7 @@ from src.utils.paths import PROCESSED_SENTIMENT_PATH, RISK_REGIMES_PATH
 # Gaussian HMM labels from src.risk.regimes.hmm (mean-return ordering).
 HMM_REGIME_LABELS: tuple[str, ...] = ("low", "mid", "high")
 REGIME_HISTORY_OBS = 365
+RECENT_SCORE_HISTORY_DAYS = 3
 
 
 def load_finbert_window(
@@ -26,6 +27,120 @@ def load_finbert_window(
 ) -> tuple[pl.DataFrame | None, pl.DataFrame | None]:
     """Delegate to shared portfolio sentiment loader."""
     return _load_finbert_window(app, window_days=window_days, tickers=tickers)
+
+
+def _to_day(ts: object) -> date:
+    if isinstance(ts, datetime):
+        return ts.date()
+    if isinstance(ts, date):
+        return ts
+    return date.fromisoformat(str(ts)[:10])
+
+
+def _utc_timestamp(d: date) -> datetime:
+    return datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
+
+
+def finbert_recent_days_panel(
+    daily: pl.DataFrame,
+    tickers: list[str],
+    *,
+    n_days: int = RECENT_SCORE_HISTORY_DAYS,
+    window_end: date | None = None,
+) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """Last ``n_days`` calendar days per ticker on a shared axis, forward-filling stale scores.
+
+    Returns ``panel`` (one row per ticker-day) and ``stale_meta`` (per-ticker disclaimer inputs).
+    """
+    if daily.is_empty() or not tickers:
+        return pl.DataFrame(), pl.DataFrame()
+
+    if window_end is None:
+        window_end = _to_day(daily["timestamp"].max())
+
+    day_list = [window_end - timedelta(days=n_days - 1 - i) for i in range(n_days)]
+
+    hist = daily.with_columns(
+        pl.col("timestamp")
+        .cast(pl.Datetime(time_unit="us", time_zone="UTC"), strict=False)
+        .dt.date()
+        .alias("day")
+    )
+    panel_rows: list[dict[str, object]] = []
+    stale_rows: list[dict[str, object]] = []
+
+    for ticker in tickers:
+        t_hist = hist.filter(pl.col("ticker") == ticker).sort("day")
+        if t_hist.is_empty():
+            stale_rows.append(
+                {
+                    "ticker": ticker,
+                    "has_stale": False,
+                    "no_data": True,
+                    "last_article_day": None,
+                    "stale_day_labels": [],
+                }
+            )
+            continue
+
+        last_article_day = _to_day(t_hist["day"][-1])
+        stale_labels: list[str] = []
+
+        for d in day_list:
+            on_day = t_hist.filter(pl.col("day") == d)
+            if on_day.height:
+                row = on_day.row(0, named=True)
+                panel_rows.append(
+                    {
+                        "ticker": ticker,
+                        "day": d,
+                        "timestamp": _utc_timestamp(d),
+                        "sentiment_score": float(row["sentiment_score"]),
+                        "is_forward_filled": False,
+                        "score_as_of": d,
+                    }
+                )
+                continue
+
+            prior = t_hist.filter(pl.col("day") <= d)
+            if prior.height:
+                carry = prior.tail(1).row(0, named=True)
+                as_of = _to_day(carry["day"])
+            else:
+                after = t_hist.filter(pl.col("day") > d).sort("day").head(1)
+                if after.is_empty():
+                    continue
+                carry = after.row(0, named=True)
+                as_of = _to_day(carry["day"])
+            panel_rows.append(
+                {
+                    "ticker": ticker,
+                    "day": d,
+                    "timestamp": _utc_timestamp(d),
+                    "sentiment_score": float(carry["sentiment_score"]),
+                    "is_forward_filled": True,
+                    "score_as_of": as_of,
+                }
+            )
+            stale_labels.append(d.isoformat())
+
+        stale_rows.append(
+            {
+                "ticker": ticker,
+                "has_stale": bool(stale_labels),
+                "no_data": False,
+                "last_article_day": last_article_day,
+                "stale_day_labels": stale_labels,
+            }
+        )
+
+    panel = pl.DataFrame(panel_rows) if panel_rows else pl.DataFrame()
+    stale_meta = pl.DataFrame(stale_rows) if stale_rows else pl.DataFrame()
+    if panel.height:
+        panel = panel.sort(["ticker", "day"]).with_columns(
+            pl.col("timestamp").cast(pl.Datetime(time_unit="us", time_zone="UTC")),
+        )
+    return panel, stale_meta
 
 
 def finbert_empty_reason(app: AppConfig, *, window_days: int = 30) -> tuple[str, list[str]]:
@@ -107,13 +222,14 @@ def regime_day_counts(win: pl.DataFrame) -> pl.DataFrame:
     return pl.DataFrame(rows)
 
 
-def load_trailing_stops_table(summary: pl.DataFrame) -> pl.DataFrame:
+def load_trailing_stops_table(summary: pl.DataFrame, app: AppConfig | None = None) -> pl.DataFrame:
     """Expand sentiment summary into per-ticker stop levels (3 tranches)."""
+    policy = resolve_trailing_stop_policy(app)
     rows: list[dict[str, object]] = []
     for row in summary.iter_rows(named=True):
         ticker = str(row["ticker"])
         score = float(row["sentiment_score"])
-        tset: TrailingStopSet = trailing_stop_set(score)
+        tset: TrailingStopSet = trailing_stop_set(score, policy)
         rows.append(
             {
                 "ticker": ticker,

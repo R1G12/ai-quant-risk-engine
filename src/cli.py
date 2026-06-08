@@ -125,10 +125,26 @@ def run_profile(
     if pin_dates:
         env["MARKET_PIN_DATES"] = "1"
     if not skip_repro:
+        run_env = {**os.environ, **env}
+        if not dry_run and run_cfg.mode == "live":
+            from src.ingestion.news_refresh import holdings_missing_from_news
+
+            tickers = [str(t) for t in run_cfg.market.tickers]
+            if holdings_missing_from_news(tickers):
+                typer.echo(
+                    "News/sentiment cache has no articles for current holdings; "
+                    "forcing ingest → preprocess → sentiment (NEWS_SOURCE=yfinance).",
+                    err=True,
+                )
+                force_cmd = ["dvc", "repro", "-f", "ingest", "preprocess", "sentiment"]
+                typer.echo(" ".join(force_cmd))
+                force = subprocess.run(force_cmd, cwd=PROJECT_ROOT, env=run_env, check=False)
+                if force.returncode != 0:
+                    raise typer.Exit(force.returncode)
         cmd = ["dvc", "repro"]
         typer.echo(" ".join(cmd))
         if not dry_run:
-            result = subprocess.run(cmd, cwd=PROJECT_ROOT, env={**os.environ, **env}, check=False)
+            result = subprocess.run(cmd, cwd=PROJECT_ROOT, env=run_env, check=False)
             if result.returncode != 0:
                 raise typer.Exit(result.returncode)
     if dashboard and not dry_run:

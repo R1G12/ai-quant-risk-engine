@@ -5,7 +5,7 @@
 mode: live  # demo | live
 
 market:
-  tickers: ["SMH", "MSFT", "NVDA", "USO", "IWM", "BABA", "PDD"]
+  tickers: ["AAPL", "INTC", "NVDA", "SMH", "GC=F", "BZ", "^IXIC", "MU", "GS", "MS"]
   use_rolling_window: true
   rolling_days: 365
 
@@ -13,7 +13,7 @@ portfolio:
   weighting: optimised  # equal | manual | partial | optimised
   allow_shorts: true
   max_gross_per_ticker: 0.5
-  position_sides: {'SMH': 'long', 'MSFT': 'long', 'NVDA': 'long', 'USO': 'short', 'IWM': 'short', 'BABA': 'short', 'PDD': 'long'}
+  position_sides: {'AAPL': 'short', 'INTC': 'short', 'NVDA': 'short', 'SMH': 'short', 'GC=F': 'long', 'BZ': 'long', '^IXIC': 'long', 'MU': 'short', 'GS': 'long', 'MS': 'long'}
   manual_weights: {}
   anchor_weights:
   risk_free: 0.03
@@ -26,6 +26,23 @@ portfolio:
   sentiment_magnitude_tilt: true
   sentiment_tilt_beta: 0.2
   sentiment_tilt_cap: 2.0
+  # Trailing stops (Signals dashboard + sentiment long/short bands)
+  trailing_stops:
+    bull_threshold: 0.3
+    bear_threshold: -0.3
+    bull:
+      levels: [-0.04, -0.06, -0.09]
+      fractions: [0.333333, 0.333333, 0.333333]
+    neutral:
+      levels: [-0.02, -0.04, -0.06]
+      fractions: [0.333333, 0.333333, 0.333333]
+    bear:
+      levels: [-0.01, -0.03, -0.05]
+      fractions: [0.333333, 0.333333, 0.333333]
+    use_manual: false
+    manual:
+      levels: [-0.02, -0.04, -0.06]
+      fractions: [0.333333, 0.333333, 0.333333]
 
 research:
   backtest_weight_source: max_sharpe

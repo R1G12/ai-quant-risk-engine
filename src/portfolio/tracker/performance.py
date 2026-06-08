@@ -9,6 +9,7 @@ import polars as pl
 
 from src.analytics.data_bounds import detect_data_bounds
 from src.features.wide_returns import load_returns_wide
+from src.portfolio.tracker.fx import FxRateTable
 from src.portfolio.tracker.prices import close_panel
 from src.portfolio.tracker.schema import cash_flow, signed_quantity_delta
 from src.risk.portfolio.weights_loader import load_optimization_weights
@@ -98,8 +99,14 @@ def actual_equity_curve(
     initial_nav: float,
     start: date,
     end: date,
+    *,
+    fx: FxRateTable | None = None,
 ) -> tuple[pl.DataFrame, date | None]:
-    """Daily NAV from trade ledger and close panel. Returns (curve, first_trade_date in range)."""
+    """Daily NAV from trade ledger and close panel. Returns (curve, first_trade_date in range).
+
+    When ``fx`` is set, trade cash flows use each trade's FX rate and daily MTM uses
+    that day's rate; ``initial_nav`` is in display currency (e.g. SGD).
+    """
     empty = pl.DataFrame(schema={"date": pl.Date, "equity": pl.Float64, "equity_indexed": pl.Float64})
 
     if trades.is_empty():
@@ -130,15 +137,20 @@ def actual_equity_curve(
             positions[ticker] = positions.get(ticker, 0.0) + delta
             if abs(positions[ticker]) < 1e-9:
                 positions.pop(ticker, None)
-            cash += cash_flow(
+            cf_usd = cash_flow(
                 row["side"], row["action"], row["quantity"], row["price"], row["fees"]
             )
+            if fx is not None:
+                cash += cf_usd * fx.rate_on(row["trade_date"])
+            else:
+                cash += cf_usd
 
         mtm = 0.0
+        fx_d = fx.rate_on(d) if fx is not None else 1.0
         for ticker, qty in positions.items():
             px = _close_on_date(panel, ticker, d, last_close)
             if px is not None:
-                mtm += qty * px
+                mtm += qty * px * fx_d
 
         dates.append(d)
         equities.append(cash + mtm)

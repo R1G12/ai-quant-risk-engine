@@ -49,8 +49,42 @@ aqre run profile --dashboard
 
 ## FinBERT position sides
 
-- **sentiment_position_sides** (default `true`): for tickers **not** in `position_sides`, set `short` when 30d FinBERT score ≤ −0.3 and `long` when ≥ +0.3 (same bands as trailing stops). Requires `allow_shorts: true` and `data/processed/sentiment.parquet`.
+- **sentiment_position_sides** (default `true`): for tickers **not** in `position_sides`, set `short` when 30d FinBERT score ≤ `portfolio.trailing_stops.bear_threshold` and `long` when ≥ `portfolio.trailing_stops.bull_threshold`. Requires `allow_shorts: true` and `data/processed/sentiment.parquet`.
 - **sentiment_sides_window_days** (default `30`): lookback for inference (matches Signals dashboard).
+
+### Trailing stops (`portfolio.trailing_stops`)
+
+Configure sentiment bands and three-tranche stop levels for the Signals dashboard (and the same bull/bear bands for position-side inference):
+
+| Key | Meaning |
+|-----|---------|
+| `bull_threshold` / `bear_threshold` | FinBERT score bands (default ±0.3) |
+| `bull` / `neutral` / `bear` | Each has `levels` (drawdown from peak, negative fractions) and `fractions` (position sold per tranche) |
+| `use_manual` / `manual` | When `use_manual: true`, all tickers use `manual` levels instead of sentiment regime |
+
+Example (defaults):
+
+```yaml
+portfolio:
+  trailing_stops:
+    bull_threshold: 0.3
+    bear_threshold: -0.3
+    bull:
+      levels: [-0.08, -0.14, -0.20]
+      fractions: [0.333333, 0.333333, 0.333333]
+    neutral:
+      levels: [-0.05, -0.10, -0.15]
+      fractions: [0.333333, 0.333333, 0.333333]
+    bear:
+      levels: [-0.03, -0.06, -0.10]
+      fractions: [0.333333, 0.333333, 0.333333]
+    use_manual: false
+    manual:
+      levels: [-0.05, -0.10, -0.15]
+      fractions: [0.333333, 0.333333, 0.333333]
+```
+
+Restart the dashboard after editing; no `dvc repro` needed for stop display only.
 
 ## Sentiment in optimization
 

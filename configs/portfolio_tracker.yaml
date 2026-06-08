@@ -4,4 +4,9 @@ excel_fallback: dummy_portfolio.xlsx
 trades_parquet: data/processed/portfolio/trades.parquet
 metadata_json: data/processed/portfolio/_tracker_metadata.json
 sheet_name: trades
+# Assumed NAV for vs-model tab (in display_currency)
 default_portfolio_value: 1000000
+# Trade prices and yfinance marks are in quote_currency; P&L uses fx_pair per trade date
+quote_currency: USD
+display_currency: SGD
+fx_pair: USDSGD=X

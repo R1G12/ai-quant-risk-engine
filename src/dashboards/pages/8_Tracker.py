@@ -17,6 +17,7 @@ from src.dashboards.core.tracker_loaders import (
     load_comparison_curves,
     load_tracker_bundle,
 )
+from src.portfolio.tracker.formatting import format_money, money_symbol
 from src.portfolio.tracker.performance import preset_range
 from src.portfolio.tracker.prices import MarkPriceInfo
 from src.portfolio.tracker.prices import price_history
@@ -67,11 +68,22 @@ if _stale_sources or _outdated or _missing:
     st.warning(" ".join(parts))
 
 meta = bundle.get("metadata") or {}
+currency = bundle.get("currency") or {}
+display_ccy = str(currency.get("display") or "USD")
+quote_ccy = str(currency.get("quote") or "USD")
 if meta:
     src = meta.get("source_excel", "")
     st.caption(
         f"Source: `{src}` ({meta.get('source_label', '')}) · "
         f"{meta.get('row_count', 0)} trades · ingested {meta.get('ingested_at', '')}"
+    )
+if display_ccy != quote_ccy:
+    fx_pair = currency.get("fx_pair") or "FX"
+    fx_latest = currency.get("fx_latest") or "n/a"
+    st.caption(
+        f"Amounts in **{display_ccy}**. Trade prices and marks are **{quote_ccy}**; "
+        f"P&L converts with **{fx_pair}** on each trade date (marks use mark-date FX). "
+        f"Latest FX observation: {fx_latest}."
     )
 
 trades: pl.DataFrame = bundle["trades"]
@@ -89,9 +101,15 @@ with tab_open:
         c1, c2, c3 = st.columns(3)
         c1.metric("Open lots", open_pos.height)
         gross = open_pos.filter(pl.col("market_value").is_not_null())["market_value"].sum()
-        c2.metric("Gross market value", f"${float(gross):,.0f}" if gross else "—")
+        c2.metric(
+            "Gross market value",
+            format_money(float(gross), display_ccy) if gross else "—",
+        )
         ur = open_pos.filter(pl.col("unrealized_pnl").is_not_null())["unrealized_pnl"].sum()
-        c3.metric("Unrealized P&L", f"${float(ur):,.0f}" if ur is not None else "—")
+        c3.metric(
+            "Unrealized P&L",
+            format_money(float(ur), display_ccy) if ur is not None else "—",
+        )
         st.dataframe(open_pos, width="stretch")
 
 with tab_closed:
@@ -99,7 +117,7 @@ with tab_closed:
         st.info("No closed positions yet.")
     else:
         total_realized = float(closed_pos["realized_pnl"].sum())
-        st.metric("Total realized P&L", f"${total_realized:,.2f}")
+        st.metric("Total realized P&L", format_money(total_realized, display_ccy, decimals=2))
         st.dataframe(closed_pos, width="stretch")
 
 with tab_log:
@@ -165,7 +183,7 @@ with tab_charts:
                 cum.to_pandas(),
                 x="close_date",
                 y="cumulative_pnl",
-                title="Cumulative realized P&L (closed lots)",
+                title=f"Cumulative realized P&L ({display_ccy}, closed lots)",
             )
             bar.update_layout(template="plotly_dark", height=360)
             st.plotly_chart(bar, width="stretch")
@@ -178,7 +196,7 @@ with tab_model:
     )
 
     portfolio_value = st.number_input(
-        "Assumed portfolio value ($)",
+        f"Assumed portfolio value ({money_symbol(display_ccy).strip() or display_ccy})",
         min_value=1.0,
         value=float(app.tracker.default_portfolio_value),
         step=1000.0,

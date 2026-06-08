@@ -46,7 +46,7 @@ Track **actual** trades separately from model weights (`holdings.parquet` / `opt
 | `data/input/portfolio/dummy_portfolio.xlsx` | Committed template |
 | `data/input/portfolio/input_trades.xlsx` | Your live book (local) |
 | `data/processed/portfolio/trades.parquet` | Ingested ledger |
-| `configs/portfolio_tracker.yaml` | Paths and defaults |
+| `configs/portfolio_tracker.yaml` | Paths, defaults, **SGD display / USD quote FX** |
 
 ## Commands
 
@@ -73,7 +73,16 @@ Prices prefer **`data/processed/market/`** parquet. If a ticker is missing there
 
 ### vs model tab
 
-1. **Weight table** — model side uses **`optimal_weights.parquet`** (`max_sharpe` by default, same as backtests), not equal placeholder `holdings.parquet`. Actual side uses open-position notionals vs an assumed portfolio value ($).
+1. **Weight table** — model side uses **`optimal_weights.parquet`** (`max_sharpe` by default, same as backtests), not equal placeholder `holdings.parquet`. Actual side uses open-position notionals vs an assumed portfolio value in **display currency** (default **SGD**).
+
+### Currency (USD → SGD)
+
+- Excel **`price`** and yfinance **marks** stay in **USD** (`quote_currency`) for US-listed tickers.
+- Tracker P&L and NAV use **`display_currency`** (default **SGD**) with **`fx_pair`** (default `USDSGD=X`).
+- **Realized P&L**: each trade’s cash flow × FX on **`trade_date`**.
+- **Unrealized P&L**: cost basis from buys at trade-date FX; mark × FX on **mark as-of date**.
+- **Actual equity curve**: cash flows at trade-date FX; daily MTM at that day’s FX.
+- Configure in `configs/portfolio_tracker.yaml` (`quote_currency`, `display_currency`, `fx_pair`).
 2. **Performance comparison** — indexed equity curves (base 100 at window start):
    - **Model**: static optimized weights × daily returns from `risk_dataset`.
    - **Actual**: daily NAV rebuilt from your trade ledger (cash + positions marked from the close panel).
