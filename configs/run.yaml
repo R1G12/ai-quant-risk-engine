@@ -5,7 +5,7 @@
 mode: live  # demo | live
 
 market:
-  tickers: ["AAPL", "INTC", "NVDA", "SMH", "GC=F", "BZ", "^IXIC", "MU", "GS", "MS"]
+  tickers: ["NVDA", "^GSPC", "CVX", "GLD", "QQQ", "SMH", "XLE", "XOM"]
   use_rolling_window: true
   rolling_days: 365
 
@@ -13,7 +13,7 @@ portfolio:
   weighting: optimised  # equal | manual | partial | optimised
   allow_shorts: true
   max_gross_per_ticker: 0.5
-  position_sides: {'AAPL': 'short', 'INTC': 'short', 'NVDA': 'short', 'SMH': 'short', 'GC=F': 'long', 'BZ': 'long', '^IXIC': 'long', 'MU': 'short', 'GS': 'long', 'MS': 'long'}
+  position_sides: {"NVDA": "short", "^GSPC": "short", "CVX": "long", "GLD": "long", "QQQ": "short", "SMH": "short", "XLE": "long", "XOM": "long"}
   manual_weights: {}
   anchor_weights:
   risk_free: 0.03
