@@ -17,7 +17,7 @@ Configured via [run_profile.md](run_profile.md) (`configs/run.yaml`) and materia
 
 Holdings for early DVC stages: `data/raw/portfolio/holdings.parquet`. Optimized weights: `data/risk/optimization/`.
 
-**Trailing stops (dashboard):** sentiment-derived 3-tranche levels per ticker are shown on the Phase 5 [Signals](signals_dashboard.md) page; policy lives in `src/portfolio/stops.py` (aligned with the trading notebook).
+**Trailing stops (dashboard):** 3-tranche drawdown levels per ticker on the Phase 5 [Signals](signals_dashboard.md) page. Default run profile uses **`mode: vol_scaled`** (per-ticker rolling vol × sentiment multiplier); `mode: static` keeps fixed % levels per sentiment bucket. Policy: `src/portfolio/stops.py`.
 
 Optimization methods in `src/risk/optimization/`:
 

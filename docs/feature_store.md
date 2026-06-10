@@ -41,6 +41,7 @@ Plotly overview (optional): `data/analytics/risk_dataset_overview.html` (generat
 - **Phase 3 risk engine:** `src/risk/` reads `risk_dataset.parquet` and holdings for portfolio metrics
 - **Phase 4 research:** simulations and backtests use wide returns + optimization weights
 - **Phase 5 platform:** dashboards and copilot scan the same parquet artifacts (read-only)
+- **Signals trailing stops (`mode: vol_scaled`):** latest per-ticker `volatility` from `data/features/volatility/volatility.parquet` via `load_latest_daily_vol_by_ticker()` — see [signals_dashboard.md](signals_dashboard.md)
 
 ## Future use
 

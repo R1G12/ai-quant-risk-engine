@@ -11,6 +11,7 @@ from src.portfolio.sentiment_sides import map_sentiment_dataframe
 from src.portfolio.stops import TrailingStopSet, resolve_trailing_stop_policy, trailing_stop_set
 from src.risk.portfolio.holdings import load_weights
 from src.utils.config import AppConfig
+from src.utils import paths as project_paths
 from src.utils.paths import PROCESSED_SENTIMENT_PATH, RISK_REGIMES_PATH
 
 # Gaussian HMM labels from src.risk.regimes.hmm (mean-return ordering).
@@ -222,19 +223,49 @@ def regime_day_counts(win: pl.DataFrame) -> pl.DataFrame:
     return pl.DataFrame(rows)
 
 
+def load_latest_daily_vol_by_ticker(tickers: list[str] | None = None) -> dict[str, float]:
+    """Latest rolling daily vol (returns std) per ticker from the feature store."""
+    path = project_paths.FEATURES_VOLATILITY_DIR / "volatility.parquet"
+    if not path.is_file():
+        return {}
+    want = {str(t).upper() for t in tickers} if tickers else None
+    df = (
+        pl.scan_parquet(path)
+        .filter(pl.col("volatility").is_not_null())
+        .sort(["ticker", "timestamp"])
+        .group_by("ticker")
+        .agg(pl.col("volatility").last().alias("daily_vol"))
+        .collect()
+    )
+    out: dict[str, float] = {}
+    for row in df.iter_rows(named=True):
+        ticker = str(row["ticker"]).upper()
+        if want is not None and ticker not in want:
+            continue
+        out[ticker] = float(row["daily_vol"])
+    return out
+
+
 def load_trailing_stops_table(summary: pl.DataFrame, app: AppConfig | None = None) -> pl.DataFrame:
     """Expand sentiment summary into per-ticker stop levels (3 tranches)."""
     policy = resolve_trailing_stop_policy(app)
+    tickers = [str(t) for t in summary["ticker"].to_list()]
+    vol_by_ticker = (
+        load_latest_daily_vol_by_ticker(tickers) if policy.mode == "vol_scaled" else {}
+    )
     rows: list[dict[str, object]] = []
     for row in summary.iter_rows(named=True):
         ticker = str(row["ticker"])
         score = float(row["sentiment_score"])
-        tset: TrailingStopSet = trailing_stop_set(score, policy)
+        daily_vol = vol_by_ticker.get(ticker.upper())
+        tset: TrailingStopSet = trailing_stop_set(score, policy, daily_vol=daily_vol)
         rows.append(
             {
                 "ticker": ticker,
                 "sentiment_score": score,
                 "regime_tag": tset.regime_tag,
+                "daily_vol": tset.daily_vol,
+                "vol_scale": tset.vol_scale,
                 "tranche_1_level": tset.tranche_1_level,
                 "stop_1_level": tset.stop_1["level"],
                 "stop_1_exit": tset.stop_1["exit_fraction"],

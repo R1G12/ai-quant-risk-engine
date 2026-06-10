@@ -89,7 +89,7 @@ flowchart TB
 
 ### Phase 5
 - Multi-page Streamlit platform, copilot, FastAPI, monitoring, governance reports (`aqre dashboard`, `aqre copilot`, `aqre api`)
-- **Signals** sidebar page: FinBERT scores (30d), 3-tranche trailing stops, HMM regime (365d chart), VaR 95% — see [docs/signals_dashboard.md](docs/signals_dashboard.md)
+- **Signals** sidebar page: FinBERT scores (30d), vol-scaled 3-tranche trailing stops, HMM regime (365d chart), VaR 95% — see [docs/signals_dashboard.md](docs/signals_dashboard.md)
 - **Portfolio** page + sentiment-aware optimization (min gross, FinBERT sides, blended μ) — [docs/portfolio_dashboard.md](docs/portfolio_dashboard.md), [docs/run_profile.md](docs/run_profile.md)
 - **Tracker** sidebar page: Excel trade ledger, optimal-weight vs actual comparison, performance chart — see [docs/portfolio_tracker.md](docs/portfolio_tracker.md); `aqre tracker ingest`
 
@@ -244,7 +244,7 @@ dvc repro generate_platform_reports
 | Component | Location |
 |-----------|----------|
 | Platform dashboard | `src/dashboards/app.py` + `pages/` |
-| Signals (FinBERT, stops, regime, VaR) | `src/dashboards/pages/7_Signals.py` — [docs](docs/signals_dashboard.md) |
+| Signals (FinBERT, vol-scaled stops, regime, VaR) | `src/dashboards/pages/7_Signals.py` — [docs](docs/signals_dashboard.md) |
 | Tracker (Excel trades, positions, charts) | `src/dashboards/pages/8_Tracker.py` — [docs](docs/portfolio_tracker.md) |
 | Copilot | `src/copilot/` |
 | REST API | `src/api/` |
@@ -413,7 +413,7 @@ Full index: [docs/README.md](docs/README.md)
 
 ### Platform (Phase 5)
 
-- [Signals dashboard](docs/signals_dashboard.md) — FinBERT, trailing stops, regime, VaR
+- [Signals dashboard](docs/signals_dashboard.md) — FinBERT, vol-scaled trailing stops, regime, VaR
 - [System architecture](docs/system_architecture.md)
 - [Copilot architecture](docs/copilot_architecture.md)
 - [Decision engine](docs/decision_engine.md)

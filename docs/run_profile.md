@@ -54,37 +54,46 @@ aqre run profile --dashboard
 
 ### Trailing stops (`portfolio.trailing_stops`)
 
-Configure sentiment bands and three-tranche stop levels for the Signals dashboard (and the same bull/bear bands for position-side inference):
+Configure sentiment bands and three-tranche stops for the Signals dashboard (bull/bear thresholds also drive position-side inference):
 
 | Key | Meaning |
 |-----|---------|
+| `mode` | `static` (fixed % levels) or `vol_scaled` (per-ticker vol × sentiment mult) |
 | `bull_threshold` / `bear_threshold` | FinBERT score bands (default ±0.3) |
-| `bull` / `neutral` / `bear` | Each has `levels` (drawdown from peak, negative fractions) and `fractions` (position sold per tranche) |
+| `tranche_sigmas` | Vol multipliers for the three tranches when `mode: vol_scaled` |
+| `horizon_days` | √(days) scaling for vol → drawdown distance |
+| `sentiment_vol_mult` | `bull` / `neutral` / `bear` width multipliers (wider when bullish, tighter when bearish) |
+| `min_level` / `max_level` | Clamp drawdown levels (widest / tightest) |
+| `fallback_daily_vol` | Used when feature-store vol is missing for a ticker |
+| `bull` / `neutral` / `bear` | `fractions` (required); `levels` only for `static` mode |
 | `use_manual` / `manual` | When `use_manual: true`, all tickers use `manual` levels instead of sentiment regime |
 
-Example (defaults):
+Example (`vol_scaled` — current `run.yaml` style):
 
 ```yaml
 portfolio:
   trailing_stops:
+    mode: vol_scaled
+    tranche_sigmas: [1.5, 2.5, 3.5]
+    horizon_days: 7
+    sentiment_vol_mult:
+      bull: 1.25
+      neutral: 1.0
+      bear: 0.75
+    min_level: -0.30
+    max_level: -0.008
+    fallback_daily_vol: 0.02
     bull_threshold: 0.3
     bear_threshold: -0.3
     bull:
-      levels: [-0.08, -0.14, -0.20]
       fractions: [0.333333, 0.333333, 0.333333]
     neutral:
-      levels: [-0.05, -0.10, -0.15]
       fractions: [0.333333, 0.333333, 0.333333]
     bear:
-      levels: [-0.03, -0.06, -0.10]
-      fractions: [0.333333, 0.333333, 0.333333]
-    use_manual: false
-    manual:
-      levels: [-0.05, -0.10, -0.15]
       fractions: [0.333333, 0.333333, 0.333333]
 ```
 
-Restart the dashboard after editing; no `dvc repro` needed for stop display only.
+Restart the dashboard after editing config. **Config-only** changes do not require `dvc repro`. For **`mode: vol_scaled`**, run the pipeline at least once so `data/features/volatility/volatility.parquet` exists; otherwise all tickers use `fallback_daily_vol`.
 
 ## Sentiment in optimization
 

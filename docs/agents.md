@@ -44,7 +44,7 @@ Do not add pandas imports to `src/` unless explicitly migrating a notebook modul
 - `MARKET_SOURCE` env overrides `params.yaml` → `market.source` (except `aqre run profile` / `aqre prepare`, which set source from `mode`)
 - Never commit `data/features/`, `data/processed/market/`, or generated `metrics/sentiment/`, `metrics/research_*/`, `metrics/platform/` (gitignored; DVC owns them)
 - Portfolio weights: `src/portfolio/prepare.py`, `src/portfolio/weights.py`, `src/risk/portfolio/holdings.py`
-- Trailing stop policy + Signals UI: `src/portfolio/stops.py`, `src/dashboards/pages/7_Signals.py` — [signals_dashboard.md](signals_dashboard.md)
+- Trailing stop policy + Signals UI: `src/portfolio/stops.py` (`static` | `vol_scaled`), `src/dashboards/core/signals_loaders.py` (`load_latest_daily_vol_by_ticker`), `src/dashboards/pages/7_Signals.py` — [signals_dashboard.md](signals_dashboard.md). Vol-scaled stops require `data/features/volatility/volatility.parquet`.
 
 ## Modularity requirements
 

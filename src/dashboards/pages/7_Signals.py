@@ -22,6 +22,7 @@ from src.dashboards.core.signals_loaders import (
     regimes_missing_in_window,
 )
 from src.dashboards.core.theme import apply_theme, page_header
+from src.portfolio.stops import resolve_trailing_stop_policy
 
 apply_theme()
 app = load_app()
@@ -208,6 +209,13 @@ with tab_stops:
         st.warning("Trailing stops require FinBERT summary — run the sentiment pipeline first.")
     else:
         stops_df = load_trailing_stops_table(summary, app)
+        policy = resolve_trailing_stop_policy(app)
+        if policy.mode == "vol_scaled":
+            st.caption(
+                "Vol-scaled stops: level = −σ × daily_vol × √(horizon_days) × sentiment multiplier "
+                f"(horizon={policy.horizon_days}d, σ={list(policy.tranche_sigmas)}). "
+                "Daily vol from `data/features/volatility/`; fallback when missing."
+            )
         st.dataframe(stops_df, width="stretch")
 
         heat = stops_df.select(

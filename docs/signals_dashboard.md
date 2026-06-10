@@ -1,6 +1,6 @@
 # Signals dashboard (Phase 5)
 
-The **Signals** page is a sidebar module in the Phase 5 Streamlit platform. It surfaces trading-style controls aligned with [`notebooks/trading_risk_manager_final.ipynb`](../notebooks/trading_risk_manager_final.ipynb): FinBERT sentiment per ticker, three tranche trailing stops, the current HMM regime, and portfolio VaR 95%.
+The **Signals** page is a sidebar module in the Phase 5 Streamlit platform. It surfaces trading-style controls aligned with [`notebooks/trading_risk_manager_final.ipynb`](../notebooks/trading_risk_manager_final.ipynb): FinBERT sentiment per ticker, three-tranche trailing stops (vol-scaled by default), the current HMM regime, and portfolio VaR 95%.
 
 ## How to open it
 
@@ -19,11 +19,14 @@ The legacy chart explorer (`aqre dashboard --legacy` → `src/analytics/streamli
 | Tab / metric | Required pipeline output | DVC stages (minimum) |
 |--------------|--------------------------|----------------------|
 | FinBERT scores | `data/processed/sentiment.parquet` | `ingest` → `preprocess` → `sentiment` |
-| Trailing stops | Same + holdings tickers in `configs/run.yaml` | As above |
-
-**News ingest:** `mode: live` sets `NEWS_SOURCE=yfinance` (20–60 headlines per ticker, last 30 days, written to `data/raw/news.parquet`). `mode: demo` / CI uses `sample` news. Install market extras for Yahoo: `pip install -e ".[market]"`.
+| Trailing stops (sentiment) | Same + holdings tickers in `configs/run.yaml` | As above |
+| Trailing stops (`mode: vol_scaled`) | `data/features/volatility/volatility.parquet` | `generate_volatility_features` (included in full `aqre run profile`) |
 | HMM regime | `data/risk/portfolio/regimes.parquet` | `generate_portfolio_metrics` |
 | VaR 95% | `data/risk/var/var_metrics.parquet` (or research performance summary) | `generate_var_metrics` |
+
+**News ingest:** `mode: live` sets `NEWS_SOURCE=yfinance` (20–60 headlines per ticker, last 30 days, written to `data/raw/news.parquet`). `mode: demo` / CI uses `sample` news. Install market extras for Yahoo: `pip install -e ".[market]"`.
+
+**Vol-scaled stops:** if `volatility.parquet` is missing or a ticker has no row, the dashboard uses `fallback_daily_vol` from `configs/run.yaml` (default `0.02`). Run a full profile at least once so per-ticker vol reflects the live universe.
 
 Full profile run:
 
@@ -41,22 +44,51 @@ Three tabs:
 - **30-day window** of FinBERT-labelled news, aggregated per holding ticker.
 - **Ticker mapping:** uses the `ticker` column when present (yfinance ingest); otherwise `source` → ticker via [`configs/sentiment_map.yaml`](../configs/sentiment_map.yaml) (sample news).
 - **Sentiment score** (per ticker): `mean(positive labels) − mean(negative labels)`.
-- **Visuals**: bar chart of scores; table (`bullish_ratio`, `negative_ratio`, `article_count`, `avg_confidence`); **last 3 calendar days for all tickers** on one chart (forward-filled when a day has no new articles, with a red stale-data banner per ticker).
+- **Visuals**: bar chart of scores; table (`bullish_ratio`, `negative_ratio`, `article_count`, `avg_confidence`).
+- **Recent chart**: slider **1–7 days** (`signals_recent_days`); shared calendar window for all holdings with forward-filled scores when a day has no new articles.
+- **Stale data**: tickers with no articles in the window show an error line; tickers with older last-news dates show a **table** (`ticker`, `Last news day`) instead of blocking the chart.
 
 ### Trailing stops
 
-Derived from each ticker’s 30-day sentiment score using [`src/portfolio/stops.py`](../src/portfolio/stops.py) (same rules as the notebook). **Configure levels in [`configs/run.yaml`](../configs/run.yaml)** under `portfolio.trailing_stops`.
+Derived from each ticker’s 30-day sentiment score using [`src/portfolio/stops.py`](../src/portfolio/stops.py). **Configure in [`configs/run.yaml`](../configs/run.yaml)** under `portfolio.trailing_stops`.
+
+**Modes**
+
+| `mode` | Behaviour |
+|--------|-----------|
+| `static` (default in code) | Fixed drawdown levels per sentiment bucket (notebook defaults below). |
+| `vol_scaled` (recommended in `run.yaml`) | Per-ticker levels from rolling daily vol × √(horizon) × sentiment multiplier. |
+
+**Static mode** (when `mode: static` or omitted):
 
 | Sentiment score | Regime tag | Stop levels (drawdown from peak) |
 |-----------------|------------|----------------------------------|
-| ≥ 0.3 | Bullish-derived | -8%, -14%, -20% |
-| ≤ -0.3 | Bearish-derived | -3%, -6%, -10% |
-| else | Neutral-derived | -5%, -10%, -15% |
+| ≥ 0.3 | Bullish-derived | −8%, −14%, −20% |
+| ≤ −0.3 | Bearish-derived | −3%, −6%, −10% |
+| else | Neutral-derived | −5%, −10%, −15% |
 
-Each tranche exits **⅓** of the remaining position when breached (see `simulate_trailing_stops` in [`src/portfolio/weights.py`](../src/portfolio/weights.py) for path simulation).
+**Vol-scaled formula** (per tranche \(i\), when `mode: vol_scaled`):
 
-- **Tranche 1** = tightest stop (fires first): e.g. **-5%** for neutral — the least negative level.
-- **Visuals**: full table; heatmap of stop levels; tranche-1 bar chart; per-ticker “ladder” plot.
+\[
+\text{level}_i = -\sigma_i \times \text{daily\_vol} \times \sqrt{\text{horizon\_days}} \times m_{\text{sentiment}}
+\]
+
+- `daily_vol` — latest rolling std of returns from `data/features/volatility/volatility.parquet` (fallback: `fallback_daily_vol`).
+- `σ` — `tranche_sigmas` (default `1.5`, `2.5`, `3.5`).
+- \(m_{\text{sentiment}}\) — `sentiment_vol_mult` for bull / neutral / bear (default `1.25` / `1.0` / `0.75`).
+- Levels are clamped between `max_level` (tightest) and `min_level` (widest).
+
+| Sentiment score | Regime tag | Sentiment vol mult (default) |
+|-----------------|------------|------------------------------|
+| ≥ `bull_threshold` | Bullish-derived (vol-scaled) | 1.25 |
+| ≤ `bear_threshold` | Bearish-derived (vol-scaled) | 0.75 |
+| else | Neutral-derived (vol-scaled) | 1.0 |
+
+Exit **fractions** per tranche still come from `bull` / `neutral` / `bear` in config. Each tranche exits its fraction of the **remaining** position when breached (see `simulate_trailing_stops` in [`src/portfolio/weights.py`](../src/portfolio/weights.py)).
+
+- **Tranche 1** = tightest stop (fires first): the **least negative** level (e.g. NVDA might show −9% while GLD shows −3% under `vol_scaled`).
+- **Table columns** (vol-scaled): `daily_vol`, `vol_scale` (= daily_vol × √(horizon) × sentiment mult), plus three tranche levels and exit fractions.
+- **Visuals**: caption with formula when `vol_scaled`; full table; heatmap; tranche-1 bar chart; per-ticker “ladder” plot.
 
 ### Regime & VaR
 
@@ -72,9 +104,10 @@ Each tranche exits **⅓** of the remaining position when breached (see `simulat
 |-------|------|
 | Streamlit page | `src/dashboards/pages/7_Signals.py` |
 | Data loaders | `src/dashboards/core/signals_loaders.py` |
+| Per-ticker vol for stops | `load_latest_daily_vol_by_ticker()` in `signals_loaders.py` |
 | FinBERT scores + sides | `src/portfolio/sentiment_sides.py` |
 | Blended μ / regime / tilt | `src/portfolio/expected_returns.py`, `regime_policy.py`, `sentiment_tilt.py` |
-| Stop policy | `src/portfolio/stops.py` |
+| Stop policy | `src/portfolio/stops.py` (`build_stops`, `vol_scaled_stop_levels`) |
 | Re-exports | `src/dashboards/core/loaders.py` (`load_signals_finbert`, `load_signals_regime`) |
 | Tests | `tests/test_portfolio_stops.py`, `tests/test_signals_loaders.py`, `tests/test_signals_regime_chart.py` |
 
@@ -93,11 +126,26 @@ Only tickers in **current holdings** (`data/raw/portfolio/holdings.parquet` from
 
 ## Extending stop rules
 
-Edit `portfolio.trailing_stops` in **`configs/run.yaml`** (then restart the dashboard). Optional override in code: `build_stops(score, policy=..., use_manual=True)`.
+Edit `portfolio.trailing_stops` in **`configs/run.yaml`** (then restart the dashboard). Config-only changes do not require `dvc repro`, but **`vol_scaled` needs volatility features built at least once**.
+
+Optional overrides in code:
+
+```python
+from src.portfolio.stops import build_stops, trailing_stop_set
+
+stops, tag, daily_vol, vol_scale = build_stops(
+    sentiment_score,
+    policy,
+    daily_vol=0.025,  # optional; uses fallback when omitted
+)
+```
+
+Set `use_manual: true` to apply `manual` levels/fractions for all tickers regardless of sentiment.
 
 ## Related docs
 
-- [Run profile](run_profile.md) — tickers and holdings
+- [Run profile](run_profile.md) — tickers, holdings, trailing-stop config
+- [Feature store](feature_store.md) — `volatility.parquet` used by vol-scaled stops
 - [Portfolio dashboard](portfolio_dashboard.md) — effective weights in the UI by `weighting` mode
 - [Portfolio theory](portfolio_theory.md) — weighting and optimization
 - [Risk models](risk_models.md) — VaR and HMM regimes

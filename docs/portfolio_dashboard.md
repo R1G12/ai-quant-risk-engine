@@ -42,7 +42,7 @@ Configure via `portfolio.min_gross_divisor` in `configs/run.yaml`. Implemented i
    - score ≥ +0.3 → `long`
    - otherwise default `long`
 
-Same thresholds as trailing stops in [`src/portfolio/stops.py`](../src/portfolio/stops.py). Logic: [`src/portfolio/sentiment_sides.py`](../src/portfolio/sentiment_sides.py).
+Same **bull/bear thresholds** as trailing stops in [`src/portfolio/stops.py`](../src/portfolio/stops.py) (stop *levels* may be vol-scaled per ticker — see [signals_dashboard.md](signals_dashboard.md)). Logic: [`src/portfolio/sentiment_sides.py`](../src/portfolio/sentiment_sides.py).
 
 ## Sentiment in optimization (summary)
 

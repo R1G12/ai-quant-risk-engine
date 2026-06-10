@@ -28,16 +28,23 @@ portfolio:
   sentiment_tilt_cap: 2.0
   # Trailing stops (Signals dashboard + sentiment long/short bands)
   trailing_stops:
+    mode: vol_scaled
+    tranche_sigmas: [1.5, 2.5, 3.5]
+    horizon_days: 7
+    sentiment_vol_mult:
+      bull: 1.25
+      neutral: 1.0
+      bear: 0.75
+    min_level: -0.30
+    max_level: -0.008
+    fallback_daily_vol: 0.02
     bull_threshold: 0.3
     bear_threshold: -0.3
     bull:
-      levels: [-0.04, -0.06, -0.09]
       fractions: [0.333333, 0.333333, 0.333333]
     neutral:
-      levels: [-0.02, -0.04, -0.06]
       fractions: [0.333333, 0.333333, 0.333333]
     bear:
-      levels: [-0.01, -0.03, -0.05]
       fractions: [0.333333, 0.333333, 0.333333]
     use_manual: false
     manual:

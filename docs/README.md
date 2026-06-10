@@ -45,7 +45,7 @@ Entry point for all project docs. The root [README](../README.md) covers setup, 
 |-----|--------|
 | [system_architecture.md](system_architecture.md) | Layers, data flow, deployment |
 | [copilot_architecture.md](copilot_architecture.md) | Q&A routing, explainers, evidence |
-| [signals_dashboard.md](signals_dashboard.md) | FinBERT 30d, trailing stops, HMM regime, VaR 95% (Signals page) |
+| [signals_dashboard.md](signals_dashboard.md) | FinBERT 30d, vol-scaled trailing stops, HMM regime, VaR 95% (Signals page) |
 | [local_llm_integration.md](local_llm_integration.md) | Optional Ollama/LM Studio hook for copilot (no cloud cost) |
 | [decision_engine.md](decision_engine.md) | Human-in-the-loop workflow |
 | [model_serving.md](model_serving.md) | FastAPI endpoints, local serve |
