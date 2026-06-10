@@ -91,7 +91,7 @@ class VarRiskConfig:
 
 @dataclass
 class PortfolioTrackerConfig:
-    """Excel trade ledger → parquet tracker paths."""
+    """Excel trade ledger → parquet tracker paths and display FX."""
 
     input_dir: str = "data/input/portfolio"
     excel_primary: str = "input_trades.xlsx"
@@ -100,6 +100,9 @@ class PortfolioTrackerConfig:
     metadata_json: str = "data/processed/portfolio/_tracker_metadata.json"
     sheet_name: str = "trades"
     default_portfolio_value: float = 1_000_000.0
+    quote_currency: str = "USD"
+    display_currency: str = "SGD"
+    fx_pair: str = "USDSGD=X"
 
 
 @dataclass
@@ -576,6 +579,9 @@ def load_app_config(run_profile: Path | None = None) -> AppConfig:
         metadata_json=str(tracker_cfg.get("metadata_json", "data/processed/portfolio/_tracker_metadata.json")),
         sheet_name=str(tracker_cfg.get("sheet_name", "trades")),
         default_portfolio_value=float(tracker_cfg.get("default_portfolio_value", 1_000_000.0)),
+        quote_currency=str(tracker_cfg.get("quote_currency", "USD")),
+        display_currency=str(tracker_cfg.get("display_currency", "SGD")),
+        fx_pair=str(tracker_cfg.get("fx_pair", "USDSGD=X")),
     )
 
     return AppConfig(

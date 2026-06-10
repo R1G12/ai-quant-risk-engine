@@ -9,6 +9,11 @@ from typing import Literal
 
 import polars as pl
 
+from src.market.adapters.yfinance import (
+    download_symbol_history,
+    yfinance_close_series,
+    yfinance_scalar_float,
+)
 from src.utils.config import AppConfig
 from src.utils.logger import get_logger
 from src.utils.paths import market_processed_glob
@@ -68,37 +73,16 @@ def close_panel(
 
 def _yfinance_last_close(ticker: str, *, lookback_days: int = 7) -> tuple[float | None, date | None]:
     """Last valid close in recent window; end=yesterday to avoid empty today bar."""
-    try:
-        import yfinance as yf
-    except ImportError:
-        LOGGER.warning("yfinance not installed; cannot fetch live marks for %s", ticker)
-        return None, None
-
     end = date.today() - timedelta(days=1)
     start = end - timedelta(days=lookback_days)
-    try:
-        hist = yf.download(
-            ticker,
-            start=start.isoformat(),
-            end=(end + timedelta(days=1)).isoformat(),
-            progress=False,
-            auto_adjust=True,
-        )
-    except Exception as exc:
-        LOGGER.warning("yfinance failed for %s: %s", ticker, exc)
-        return None, None
-
-    if hist is None or hist.empty:
-        return None, None
-
-    close_col = "Close" if "Close" in hist.columns else hist.columns[-1]
-    series = hist[close_col].dropna()
-    if series.empty:
+    hist = download_symbol_history(ticker, start, end)
+    series = yfinance_close_series(hist)
+    if series is None or series.empty:
         return None, None
 
     last_idx = series.index[-1]
     as_of = last_idx.date() if hasattr(last_idx, "date") else last_idx
-    return float(series.iloc[-1]), as_of
+    return yfinance_scalar_float(series.iloc[-1]), as_of
 
 
 def _latest_from_panel(panel: pl.DataFrame, ticker: str) -> tuple[float | None, date | None]:
@@ -161,27 +145,14 @@ def price_history(
     if not sub.is_empty():
         return sub
 
-    price, as_of = _yfinance_last_close(ticker, lookback_days=(end - start).days + 7)
-    if price is None:
-        return pl.DataFrame(schema={"date": pl.Date, "close": pl.Float64})
-
-    try:
-        import yfinance as yf
-    except ImportError:
-        return pl.DataFrame(schema={"date": pl.Date, "close": pl.Float64})
-
-    hist = yf.download(
-        ticker,
-        start=start.isoformat(),
-        end=(end + timedelta(days=1)).isoformat(),
-        progress=False,
-        auto_adjust=True,
-    )
-    if hist is None or hist.empty:
-        if as_of and price:
+    hist = download_symbol_history(ticker, start, end)
+    series = yfinance_close_series(hist)
+    if series is None or series.empty:
+        price, as_of = _yfinance_last_close(ticker, lookback_days=(end - start).days + 7)
+        if price is not None and as_of is not None:
             return pl.DataFrame({"date": [as_of], "close": [price]})
         return pl.DataFrame(schema={"date": pl.Date, "close": pl.Float64})
 
-    close_col = "Close" if "Close" in hist.columns else hist.columns[-1]
-    dates = [d.date() if hasattr(d, "date") else d for d in hist.index]
-    return pl.DataFrame({"date": dates, "close": hist[close_col].astype(float).tolist()})
+    dates = [d.date() if hasattr(d, "date") else d for d in series.index]
+    closes = [yfinance_scalar_float(v) for v in series.tolist()]
+    return pl.DataFrame({"date": dates, "close": closes})

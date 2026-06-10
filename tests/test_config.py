@@ -19,3 +19,6 @@ def test_load_app_config_market_sample() -> None:
     assert app.research.simulation.seed == 42
     assert app.tracker.excel_primary == "input_trades.xlsx"
     assert app.tracker.trades_parquet.endswith("trades.parquet")
+    assert app.tracker.quote_currency == "USD"
+    assert app.tracker.display_currency == "SGD"
+    assert app.tracker.fx_pair == "USDSGD=X"

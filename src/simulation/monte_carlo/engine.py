@@ -9,13 +9,29 @@ from src.simulation.stochastic_processes.gbm import simulate_gbm_paths
 from src.simulation.stochastic_processes.multivariate import simulate_multivariate_gbm
 from src.utils.config import SimulationConfig
 
+_EPS = 1e-12
+
+
+def _terminal_returns(paths: np.ndarray) -> np.ndarray:
+    """Simple return per path; NaN when starting wealth is ~0."""
+    start = paths[:, 0]
+    end = paths[:, -1]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.where(np.abs(start) > _EPS, end / start - 1.0, np.nan)
+
+
+def _max_drawdowns(paths: np.ndarray) -> np.ndarray:
+    """Max drawdown per path; safe when wealth or running max is ~0."""
+    running_max = np.maximum.accumulate(paths, axis=1)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        dd = np.where(running_max > _EPS, paths / running_max - 1.0, 0.0)
+    return dd.min(axis=1)
+
 
 def path_summary_stats(paths: np.ndarray) -> pl.DataFrame:
     """Per-path summary: terminal return, max drawdown."""
-    terminal = paths[:, -1] / paths[:, 0] - 1.0
-    running_max = np.maximum.accumulate(paths, axis=1)
-    dd = paths / running_max - 1.0
-    max_dd = dd.min(axis=1)
+    terminal = _terminal_returns(paths)
+    max_dd = _max_drawdowns(paths)
     return pl.DataFrame(
         {
             "path_id": list(range(paths.shape[0])),
@@ -27,17 +43,28 @@ def path_summary_stats(paths: np.ndarray) -> pl.DataFrame:
 
 def tail_metrics_from_paths(paths: np.ndarray, confidence: float = 0.95) -> pl.DataFrame:
     """VaR/CVaR style metrics on terminal simple returns."""
-    rets = paths[:, -1] / paths[:, 0] - 1.0
-    var = float(np.quantile(rets, 1.0 - confidence))
-    tail = rets[rets <= var]
+    rets = _terminal_returns(paths)
+    finite = rets[np.isfinite(rets)]
+    if finite.size == 0:
+        return pl.DataFrame(
+            {
+                "confidence": [confidence],
+                "var": [float("nan")],
+                "cvar": [float("nan")],
+                "mean_return": [float("nan")],
+                "volatility": [float("nan")],
+            }
+        )
+    var = float(np.quantile(finite, 1.0 - confidence))
+    tail = finite[finite <= var]
     cvar = float(tail.mean()) if len(tail) else var
     return pl.DataFrame(
         {
             "confidence": [confidence],
             "var": [var],
             "cvar": [cvar],
-            "mean_return": [float(rets.mean())],
-            "volatility": [float(rets.std())],
+            "mean_return": [float(finite.mean())],
+            "volatility": [float(finite.std())],
         }
     )
 

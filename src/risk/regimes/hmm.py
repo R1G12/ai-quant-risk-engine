@@ -22,8 +22,10 @@ def fit_hmm_regimes(
     hmm = GaussianHMM(
         n_components=cfg.hmm_n_regimes,
         covariance_type="full",
-        n_iter=cfg.hmm_n_iter,
+        n_iter=max(cfg.hmm_n_iter, 300),
+        tol=1e-3,
         random_state=seed,
+        verbose=False,
     )
     hmm.fit(r)
     states = hmm.predict(r)

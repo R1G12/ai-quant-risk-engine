@@ -167,6 +167,93 @@ def yfinance_download_strategies() -> list[tuple[str, object | None]]:
     return strategies
 
 
+def yfinance_scalar_float(value: object) -> float:
+    """Coerce a yfinance/pandas cell to ``float`` (handles Series/DataFrame scalars)."""
+    import pandas as pd
+
+    v: object = value
+    if isinstance(v, pd.DataFrame):
+        v = v.squeeze()
+    if isinstance(v, pd.Series):
+        v = v.squeeze()
+    if hasattr(v, "item"):
+        try:
+            return float(v.item())  # type: ignore[union-attr]
+        except (ValueError, TypeError):
+            pass
+    return float(v)  # type: ignore[arg-type]
+
+
+def yfinance_close_series(hist: object):
+    """Return a 1D close price series from a yfinance history frame."""
+    import pandas as pd
+
+    if hist is None or not isinstance(hist, pd.DataFrame) or hist.empty:
+        return None
+
+    if isinstance(hist.columns, pd.MultiIndex):
+        level0 = hist.columns.get_level_values(0)
+        if "Close" in level0:
+            close = hist["Close"]
+        elif "Adj Close" in level0:
+            close = hist["Adj Close"]
+        else:
+            close = hist.iloc[:, -1]
+        if isinstance(close, pd.DataFrame):
+            close = close.squeeze(axis=1)
+    else:
+        close_col = "Close" if "Close" in hist.columns else hist.columns[-1]
+        close = hist[close_col]
+
+    series = close.squeeze()
+    if isinstance(series, pd.DataFrame):
+        series = series.iloc[:, 0]
+    return series.dropna()
+
+
+def download_symbol_history(symbol: str, start: date, end: date):
+    """Download one symbol over ``[start, end]`` with multi-strategy Yahoo fallback."""
+    import yfinance as yf
+
+    if start > end:
+        start, end = end, start
+    start_s = start.isoformat()
+    end_exclusive = (end + timedelta(days=1)).isoformat()
+
+    strategies = yfinance_download_strategies()
+    strategies = sorted(strategies, key=lambda s: 0 if s[0] == "curl_cffi_no_verify" else 1)
+
+    last_exc: Exception | None = None
+    for _label, session in strategies:
+        try:
+            ticker = yf.Ticker(symbol, session=session) if session else yf.Ticker(symbol)
+            try:
+                hist = ticker.history(start=start_s, end=end_exclusive, auto_adjust=True, raise_errors=True)
+            except TypeError:
+                hist = ticker.history(start=start_s, end=end_exclusive, auto_adjust=True)
+            if hist is not None and not hist.empty:
+                return hist
+
+            kwargs: dict = dict(
+                start=start_s,
+                end=end_exclusive,
+                progress=False,
+                auto_adjust=True,
+            )
+            if session is not None:
+                kwargs["session"] = session
+            hist = yf.download(symbol, **kwargs)
+            if hist is not None and not hist.empty:
+                return hist
+        except Exception as exc:
+            last_exc = exc
+            continue
+
+    if last_exc is not None:
+        LOGGER.warning("download_symbol_history failed for %s: %s", symbol, last_exc)
+    return None
+
+
 def download_tickers_history(
     tickers: list[str],
     *,

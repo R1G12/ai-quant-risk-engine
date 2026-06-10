@@ -47,7 +47,7 @@ def test_yfinance_last_close_uses_yesterday_end() -> None:
         {"Close": [50.0, 51.0]},
         index=pd.to_datetime([yesterday - timedelta(days=1), yesterday]),
     )
-    with patch("yfinance.download", return_value=fake):
+    with patch("src.portfolio.tracker.prices.download_symbol_history", return_value=fake):
         price, as_of = _yfinance_last_close("AAPL", lookback_days=7)
     assert price == pytest.approx(51.0)
     assert as_of == yesterday
