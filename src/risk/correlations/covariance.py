@@ -5,10 +5,40 @@ from __future__ import annotations
 import numpy as np
 import polars as pl
 
+from src.utils.logger import get_logger
+
+LOGGER = get_logger(__name__)
+
 
 def tickers_in_wide(returns_wide: pl.DataFrame, tickers: list[str]) -> list[str]:
     """Return tickers that appear as return columns in a wide frame."""
     return [c for c in tickers if c in returns_wide.columns]
+
+
+def align_optimization_tickers(
+    returns_wide: pl.DataFrame,
+    holdings_tickers: list[str],
+    *,
+    context: str = "optimization",
+) -> list[str]:
+    """Holdings tickers that have return columns (preserves holdings order)."""
+    usable = tickers_in_wide(returns_wide, holdings_tickers)
+    missing = [t for t in holdings_tickers if t not in usable]
+    if missing:
+        LOGGER.warning(
+            "%s: excluding %d ticker(s) without return history: %s",
+            context,
+            len(missing),
+            missing,
+        )
+    if len(usable) < 2:
+        raise ValueError(
+            f"{context}: need at least 2 tickers with return history; "
+            f"found {len(usable)} ({usable}). "
+            f"Missing or empty: {missing}. "
+            "Check configs/run.yaml tickers and re-run market ingest + merge_features."
+        )
+    return usable
 
 
 def sample_covariance_matrix(returns_wide: pl.DataFrame, tickers: list[str]) -> np.ndarray:

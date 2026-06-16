@@ -10,7 +10,20 @@ import polars as pl
 from src.portfolio.regime_policy import latest_hmm_regime_label, regime_sentiment_multiplier
 from src.portfolio.sentiment_sides import finbert_scores_by_ticker
 from src.utils.config import AppConfig
+from src.utils.logger import get_logger
 from src.utils.paths import RISK_DATASET_PATH
+
+LOGGER = get_logger(__name__)
+
+
+def _agg_scalar(row: pl.DataFrame, column: str, *, default: float = 0.0) -> float:
+    """Read one aggregated value from a single-row filter result."""
+    if row.is_empty():
+        return default
+    val = row[column][0]
+    if val is None:
+        return default
+    return float(val)
 
 
 def _historical_mu(app: AppConfig, tickers: list[str]) -> np.ndarray:
@@ -24,7 +37,13 @@ def _historical_mu(app: AppConfig, tickers: list[str]) -> np.ndarray:
     mus: list[float] = []
     for t in tickers:
         row = df.filter(pl.col("ticker") == t)
-        mus.append(float(row["mu"][0]) if row.height else 0.0)
+        mu = _agg_scalar(row, "mu")
+        if row.is_empty() or row["mu"][0] is None:
+            LOGGER.warning(
+                "Historical mu missing for %s in risk_dataset; using 0.0 for optimization",
+                t,
+            )
+        mus.append(mu)
     return np.array(mus)
 
 

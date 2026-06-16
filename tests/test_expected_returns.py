@@ -67,3 +67,36 @@ def test_build_expected_returns_blend(risk_dataset: Path, tmp_path: Path, monkey
     assert len(mu) == 2
     assert meta["alpha_eff"] > 0
     assert meta["mu_mode"] == "vol_scaled"
+
+
+def test_historical_mu_null_returns_use_zero(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    p = tmp_path / "risk_dataset.parquet"
+    pl.DataFrame(
+        {
+            "ticker": ["A", "A", "B"],
+            "returns": [0.01, 0.02, None],
+            "bullish_ratio": [0.5, 0.5, None],
+        }
+    ).write_parquet(p)
+    monkeypatch.setattr("src.portfolio.expected_returns.RISK_DATASET_PATH", p)
+
+    base = load_app_config()
+    run = RunConfig(
+        mode="demo",
+        market=RunMarketOverrides(tickers=["A", "B"]),
+        portfolio=PortfolioRunConfig(sentiment_mu_blend=0.0),
+    )
+    app = AppConfig(
+        finbert=Config(),
+        market=base.market,
+        features=FeatureConfig(),
+        sentiment_map={"source_to_ticker": {}, "default_ticker": "MARKET"},
+        risk=base.risk,
+        research=base.research,
+        tracker=base.tracker,
+        run=run,
+    )
+    mu, meta = build_expected_returns(app, ["A", "B"])
+    assert mu[0] == pytest.approx(0.015)
+    assert mu[1] == pytest.approx(0.0)
+    assert meta["mu_mode"] == "historical_only"

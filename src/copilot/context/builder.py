@@ -9,8 +9,9 @@ import polars as pl
 
 from src.analytics.dashboard_kpis import WindowKpis, compute_window_kpis
 from src.analytics.charts.context import DateRange
-from src.risk.portfolio.exposures import load_exposure_table
+from src.risk.portfolio.exposures import exposure_table
 from src.risk.portfolio.holdings import load_weights
+from src.risk.portfolio.weights_loader import load_optimization_weights
 from src.utils.config import AppConfig, load_app_config
 from src.utils.paths import (
     RISK_CORRELATIONS_DIR,
@@ -50,10 +51,9 @@ def _load_correlations() -> pl.DataFrame | None:
     return pl.read_parquet(path) if path.is_file() else None
 
 
-def _load_sentiment_summary(app: AppConfig) -> pl.DataFrame | None:
-    if not RISK_DATASET_PATH.is_file():
+def _load_sentiment_summary(app: AppConfig, tickers: list[str]) -> pl.DataFrame | None:
+    if not RISK_DATASET_PATH.is_file() or not tickers:
         return None
-    tickers = list(load_weights(app).keys())
     return (
         pl.scan_parquet(RISK_DATASET_PATH)
         .filter(pl.col("ticker").is_in(tickers))
@@ -66,6 +66,20 @@ def _load_sentiment_summary(app: AppConfig) -> pl.DataFrame | None:
     )
 
 
+def _resolve_portfolio_weights(app: AppConfig) -> tuple[dict[str, float], str]:
+    """Holdings for equal/manual; optimized weights when available."""
+    weighting = (
+        app.run.portfolio.weighting
+        if app.run is not None
+        else app.risk.portfolio.weight_mode
+    )
+    if weighting in ("optimised", "partial"):
+        weights, label = load_optimization_weights(app)
+        if not label.startswith("holdings"):
+            return weights, label
+    return load_weights(app), weighting
+
+
 def build_portfolio_context(
     app: AppConfig | None = None,
     *,
@@ -73,7 +87,7 @@ def build_portfolio_context(
 ) -> PortfolioContext:
     """Build portfolio context from on-disk DVC artifacts."""
     app = app or load_app_config()
-    weights = load_weights(app)
+    weights, weight_source = _resolve_portfolio_weights(app)
     tickers = list(weights.keys())
 
     regimes = pl.read_parquet(RISK_REGIMES_PATH) if RISK_REGIMES_PATH.is_file() else None
@@ -81,7 +95,7 @@ def build_portfolio_context(
         pl.read_parquet(RISK_PORTFOLIO_METRICS_PATH) if RISK_PORTFOLIO_METRICS_PATH.is_file() else None
     )
 
-    meta: dict[str, object] = {"weight_source": app.research.backtest.weight_source}
+    meta: dict[str, object] = {"weight_source": weight_source}
     if RISK_OPT_WEIGHTS_PATH.is_file():
         meta["optimization_weights_path"] = str(RISK_OPT_WEIGHTS_PATH)
 
@@ -89,13 +103,13 @@ def build_portfolio_context(
         experiment_id=app.research.meta.experiment_id,
         tickers=tickers,
         weights=weights,
-        exposures=load_exposure_table(app),
+        exposures=exposure_table(weights),
         kpis=compute_window_kpis(app, date_range),
         var_table=_load_var_table(),
         correlations=_load_correlations(),
         regimes=regimes,
         portfolio_metrics=port_metrics,
-        sentiment_summary=_load_sentiment_summary(app),
+        sentiment_summary=_load_sentiment_summary(app, tickers),
         as_of=date.today(),
         metadata=meta,
     )

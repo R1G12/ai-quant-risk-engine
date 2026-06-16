@@ -22,3 +22,4 @@ def test_load_app_config_market_sample() -> None:
     assert app.tracker.quote_currency == "USD"
     assert app.tracker.display_currency == "SGD"
     assert app.tracker.fx_pair == "USDSGD=X"
+    assert app.tracker.benchmark_ticker == "SPY"

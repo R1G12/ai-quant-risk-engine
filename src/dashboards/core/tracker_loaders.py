@@ -13,6 +13,7 @@ from src.portfolio.tracker.ingest import ingest_trades, resolve_excel_path
 from src.portfolio.tracker.performance import (
     ComparisonBounds,
     actual_equity_curve,
+    benchmark_equity_curve,
     model_equity_curve,
     tracker_comparison_bounds,
 )
@@ -116,6 +117,8 @@ def load_comparison_curves(
     if model.height and "equity_indexed" not in model.columns:
         model = model.rename({"equity": "equity_indexed"})
 
+    benchmark = benchmark_equity_curve(app, dr.start, dr.end)
+
     mark_info = latest_mark_prices_with_info(
         trades["ticker"].unique().to_list() if trades.height else [],
         app,
@@ -127,6 +130,7 @@ def load_comparison_curves(
     return {
         "model": model,
         "actual": actual,
+        "benchmark": benchmark,
         "first_trade_date": first_trade,
         "panel": panel,
         "currency": currency_context(app, fx),

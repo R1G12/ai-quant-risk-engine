@@ -82,11 +82,14 @@ Prices prefer **`data/processed/market/`** parquet. If a ticker is missing there
 - **Realized P&L**: each trade’s cash flow × FX on **`trade_date`**.
 - **Unrealized P&L**: cost basis from buys at trade-date FX; mark × FX on **mark as-of date**.
 - **Actual equity curve**: cash flows at trade-date FX; daily MTM at that day’s FX.
-- Configure in `configs/portfolio_tracker.yaml` (`quote_currency`, `display_currency`, `fx_pair`).
+- Configure in `configs/portfolio_tracker.yaml` (`quote_currency`, `display_currency`, `fx_pair`, `benchmark_ticker`).
 2. **Performance comparison** — indexed equity curves (base 100 at window start):
    - **Model**: static optimized weights × daily returns from `risk_dataset`.
    - **Actual**: daily NAV rebuilt from your trade ledger (cash + positions marked from the close panel).
-3. **Period** — presets (3M / 6M / 1Y / All) plus start/end date inputs, clamped to pipeline and trade dates.
+   - **Benchmark**: buy-and-hold `benchmark_ticker` (default **SPY**) from the same return series.
+3. **Period** — presets (3M / 6M / 1Y / All) plus start/end date inputs, clamped to pipeline and trade dates (through **yesterday** for close marks).
+
+Tracker date bounds extend to the latest of: pipeline artifacts, your last trade, and yesterday. Book tickers not in `data/processed/market/` (e.g. `^GSPC`, `^NDX`) are priced via **yfinance** for marks and the actual equity curve. **SPY** benchmark returns also fall back to yfinance when SPY is not in `risk_dataset`.
 
 Run `dvc repro optimize_portfolios` (or full profile) before expecting a non-trivial model curve.
 

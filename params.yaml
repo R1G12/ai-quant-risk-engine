@@ -1,6 +1,3 @@
-# User-facing run profile (tickers, live/demo, portfolio weighting): configs/run.yaml
-# Apply with: aqre prepare && aqre run profile
-
 ingestion:
   source: sample
   seed: 42
@@ -11,19 +8,19 @@ sentiment:
   max_seq_length: 128
   model_name: ProsusAI/finbert
 market:
-  source: sample
+  source: yfinance
   tickers:
-  - AAPL
-  - MSFT
+  - CVX
   - XOM
-  - GS
-  - JPM
-  # Rolling window: end=today, start=today-rolling_days (local dev).
-  # Set use_rolling_window: false or MARKET_PIN_DATES=1 to pin dates (CI).
+  - TSLA
+  - ARKX
+  - SMH
+  - JEDI
+  - LMT
   use_rolling_window: true
   rolling_days: 365
-  start_date: '2024-01-01'
-  end_date: '2024-03-31'
+  start_date: '2025-06-14'
+  end_date: '2026-06-14'
   partition_freq: month
   compression: zstd
   default_sentiment_ticker: MARKET

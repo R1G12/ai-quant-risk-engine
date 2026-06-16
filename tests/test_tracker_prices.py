@@ -53,6 +53,20 @@ def test_yfinance_last_close_uses_yesterday_end() -> None:
     assert as_of == yesterday
 
 
+def test_close_panel_yfinance_fallback_for_missing_ticker() -> None:
+    import pandas as pd
+
+    fake = pd.DataFrame(
+        {"Close": [100.0, 101.0]},
+        index=pd.to_datetime(["2025-06-01", "2025-06-02"]),
+    )
+    with patch("src.portfolio.tracker.prices._processed_market_available", return_value=False):
+        with patch("src.portfolio.tracker.prices.download_symbol_history", return_value=fake):
+            panel = close_panel(["ZZZ"], date(2025, 6, 1), date(2025, 6, 2))
+    assert panel.height == 2
+    assert panel["ticker"].unique().to_list() == ["ZZZ"]
+
+
 def test_latest_mark_prices_processed_first(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     mark_day = date.today() - timedelta(days=2)
     market_dir = tmp_path / "data" / "processed" / "market" / f"year={mark_day.year}" / f"month={mark_day.month:02d}"

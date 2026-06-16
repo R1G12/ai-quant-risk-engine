@@ -16,7 +16,11 @@ from src.portfolio.weights import (
     optimize_partial_weights,
     resolve_weights,
 )
-from src.risk.correlations.covariance import ledoit_wolf_shrinkage, sample_covariance_matrix
+from src.risk.correlations.covariance import (
+    align_optimization_tickers,
+    ledoit_wolf_shrinkage,
+    sample_covariance_matrix,
+)
 from src.risk.optimization.constraints import PortfolioConstraints
 from src.risk.optimization.markowitz import max_sharpe_weights, min_variance_weights, portfolio_stats
 from src.risk.pipeline._io import write_single_parquet
@@ -136,9 +140,11 @@ def run() -> None:
     app = load_app_config()
     ensure_dir(RISK_OPTIMIZATION_DIR)
 
-    tickers = list(load_weights(app).keys())
+    holdings_tickers = list(load_weights(app).keys())
     port = build_portfolio_returns(app)
-    wide = load_returns_wide(tickers)
+    wide = load_returns_wide(holdings_tickers)
+    tickers = align_optimization_tickers(wide, holdings_tickers, context="optimize_portfolios")
+    excluded = [t for t in holdings_tickers if t not in tickers]
 
     cov = sample_covariance_matrix(wide, tickers)
     if app.risk.optimization.shrinkage == "ledoit_wolf":
@@ -160,7 +166,7 @@ def run() -> None:
     stat_rows = []
     for label, w in [("min_variance", w_min), ("max_sharpe", w_sharpe)]:
         r, v, s = portfolio_stats(w, mean_r, cov)
-        for t, wi in zip(tickers, w, strict=False):
+        for t, wi in zip(tickers, w, strict=True):
             weight_rows.append({"portfolio": label, "asset": t, "weight": float(wi)})
         stat_rows.append(
             {
@@ -180,6 +186,7 @@ def run() -> None:
         "converged": converged,
         "shrinkage": opt_cfg.shrinkage,
         "tickers": tickers,
+        "excluded_tickers": excluded,
         "weighting": opt_cfg.weighting,
         "tilt_applied": tilt_applied,
         **mu_meta,

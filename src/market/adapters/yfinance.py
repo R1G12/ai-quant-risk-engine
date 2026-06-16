@@ -208,6 +208,8 @@ def yfinance_close_series(hist: object):
     series = close.squeeze()
     if isinstance(series, pd.DataFrame):
         series = series.iloc[:, 0]
+    if not hasattr(series, "dropna"):
+        series = pd.Series([float(series)], index=hist.index)
     return series.dropna()
 
 

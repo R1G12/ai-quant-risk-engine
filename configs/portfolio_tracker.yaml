@@ -10,3 +10,5 @@ default_portfolio_value: 1000000
 quote_currency: USD
 display_currency: SGD
 fx_pair: USDSGD=X
+# Buy-and-hold benchmark on vs-model performance chart
+benchmark_ticker: SPY

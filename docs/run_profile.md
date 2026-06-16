@@ -11,6 +11,8 @@ aqre prepare
 aqre run profile
 ```
 
+`aqre prepare` also writes **`params.yaml`** and **`configs/market.yaml`** market settings from the run profile so DVC invalidates stages when tickers or `mode` change (not only at Python runtime).
+
 Or one shot:
 
 ```powershell

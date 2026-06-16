@@ -31,7 +31,7 @@ raw_bounds, bounds = load_bounds(app)
 if raw_bounds.max_date < date.today() - timedelta(days=30):
     st.warning(
         f"Sample artifacts span **{raw_bounds.min_date}** to **{raw_bounds.max_date}**. "
-        "Refresh pipeline data or use the legacy dashboard's live yfinance mode for recent prices."
+        "Run `aqre run profile` (or `aqre prepare`) to refresh pipeline data."
     )
 
 try:
@@ -50,11 +50,16 @@ with c2:
 with c3:
     st.metric("VaR 95%", f"{kpis.var_95:.2%}" if kpis.var_95 is not None else "n/a")
 with c4:
-    st.metric("Data span", f"{bounds.min_date} -> {bounds.max_date}")
+    st.metric("Pipeline through", str(bounds.max_date))
+
+st.caption(
+    f"Artifact history spans **{raw_bounds.min_date}** → **{raw_bounds.max_date}** "
+    "(oldest backtest/risk parquet through latest market data)."
+)
 
 st.info(
-    "Use the **sidebar pages** for Portfolio, Risk, Simulations, Experiments, Monitoring, and Copilot. "
-    "Legacy chart explorer: `streamlit run src/analytics/streamlit_dashboard.py`"
+    "Use the **sidebar pages** for **Portfolio**, **Risk**, **Simulations**, **Experiments**, "
+    "**Monitoring**, **Signals**, **Copilot**, and **Tracker** (actual trade ledger vs model)."
 )
 
 st.subheader("Executive summary")

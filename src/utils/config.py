@@ -103,6 +103,7 @@ class PortfolioTrackerConfig:
     quote_currency: str = "USD"
     display_currency: str = "SGD"
     fx_pair: str = "USDSGD=X"
+    benchmark_ticker: str = "SPY"
 
 
 @dataclass
@@ -389,6 +390,42 @@ def run_profile_env(run: RunConfig, *, force: bool = False) -> dict[str, str]:
     return env
 
 
+def sync_run_profile_to_params(app: AppConfig) -> list[Path]:
+    """Write run-profile market settings into params.yaml and configs/market.yaml for DVC."""
+    updated: list[Path] = []
+    market_payload = {
+        "source": app.market.source,
+        "tickers": list(app.market.tickers),
+        "use_rolling_window": app.market.use_rolling_window,
+        "rolling_days": app.market.rolling_days,
+        "start_date": app.market.start_date,
+        "end_date": app.market.end_date,
+        "partition_freq": app.market.partition_freq,
+        "compression": app.market.compression,
+        "default_sentiment_ticker": app.market.default_sentiment_ticker,
+    }
+
+    params_path = PROJECT_ROOT / "params.yaml"
+    if params_path.is_file():
+        params = _load_yaml(params_path)
+        params["market"] = {**params.get("market", {}), **market_payload}
+        params_path.write_text(
+            yaml.dump(params, default_flow_style=False, sort_keys=False, allow_unicode=True),
+            encoding="utf-8",
+        )
+        updated.append(params_path)
+
+    market_cfg_path = CONFIGS_DIR / "market.yaml"
+    if market_cfg_path.is_file():
+        market_cfg_path.write_text(
+            yaml.dump(market_payload, default_flow_style=False, sort_keys=False, allow_unicode=True),
+            encoding="utf-8",
+        )
+        updated.append(market_cfg_path)
+
+    return updated
+
+
 def _apply_run_to_merged(
     run: RunConfig,
     merged_market: dict[str, Any],
@@ -582,6 +619,7 @@ def load_app_config(run_profile: Path | None = None) -> AppConfig:
         quote_currency=str(tracker_cfg.get("quote_currency", "USD")),
         display_currency=str(tracker_cfg.get("display_currency", "SGD")),
         fx_pair=str(tracker_cfg.get("fx_pair", "USDSGD=X")),
+        benchmark_ticker=str(tracker_cfg.get("benchmark_ticker", "SPY")),
     )
 
     return AppConfig(

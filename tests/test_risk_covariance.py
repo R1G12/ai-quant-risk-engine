@@ -4,7 +4,11 @@ import numpy as np
 import polars as pl
 import pytest
 
-from src.risk.correlations.covariance import ledoit_wolf_shrinkage, sample_covariance_matrix
+from src.risk.correlations.covariance import (
+    align_optimization_tickers,
+    ledoit_wolf_shrinkage,
+    sample_covariance_matrix,
+)
 
 
 def test_covariance_symmetric() -> None:
@@ -34,6 +38,18 @@ def test_single_ticker_covariance_is_2d() -> None:
     )
     with pytest.raises(ValueError, match="at least 2 tickers"):
         sample_covariance_matrix(wide, ["A"])
+
+
+def test_align_optimization_tickers_excludes_missing() -> None:
+    wide = pl.DataFrame(
+        {
+            "timestamp": range(10),
+            "A": np.random.default_rng(0).normal(0, 0.02, 10),
+            "B": np.random.default_rng(1).normal(0, 0.03, 10),
+        }
+    )
+    tickers = align_optimization_tickers(wide, ["A", "B", "SPCX"])
+    assert tickers == ["A", "B"]
 
 
 def test_numpy_cov_scalar_guard() -> None:

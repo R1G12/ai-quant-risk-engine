@@ -38,19 +38,22 @@ def _processed_market_available() -> bool:
     return root.is_dir()
 
 
-def close_panel(
+_EMPTY_PANEL = pl.DataFrame(schema={"date": pl.Date, "ticker": pl.Utf8, "close": pl.Float64})
+
+
+def _close_panel_processed(
     tickers: list[str],
     start: date,
     end: date,
 ) -> pl.DataFrame:
-    """Daily closes from processed market parquet: columns date, ticker, close."""
+    """Daily closes from processed market parquet only."""
     if not tickers or not _processed_market_available():
-        return pl.DataFrame(schema={"date": pl.Date, "ticker": pl.Utf8, "close": pl.Float64})
+        return _EMPTY_PANEL.clone()
 
     try:
         raw = pl.scan_parquet(market_processed_glob()).collect()
         if raw.is_empty() or "timestamp" not in raw.columns:
-            return pl.DataFrame(schema={"date": pl.Date, "ticker": pl.Utf8, "close": pl.Float64})
+            return _EMPTY_PANEL.clone()
         df = (
             raw.filter(pl.col("ticker").is_in(tickers))
             .filter(pl.col("timestamp").dt.date() >= start)
@@ -63,12 +66,63 @@ def close_panel(
             )
         )
     except Exception as exc:
-        LOGGER.warning("close_panel failed: %s", exc)
-        return pl.DataFrame(schema={"date": pl.Date, "ticker": pl.Utf8, "close": pl.Float64})
+        LOGGER.warning("close_panel processed load failed: %s", exc)
+        return _EMPTY_PANEL.clone()
 
     if df.is_empty():
         return df
     return df.unique(subset=["date", "ticker"], keep="last")
+
+
+def _yfinance_ticker_closes(ticker: str, start: date, end: date) -> pl.DataFrame:
+    """Daily closes for one ticker via yfinance (Tracker fallback)."""
+    if start > end:
+        return _EMPTY_PANEL.clone()
+    hist = download_symbol_history(ticker, start, end)
+    series = yfinance_close_series(hist)
+    if series is None or series.empty:
+        return _EMPTY_PANEL.clone()
+    dates = [d.date() if hasattr(d, "date") else d for d in series.index]
+    closes = [yfinance_scalar_float(v) for v in series.tolist()]
+    return pl.DataFrame({"date": dates, "ticker": [ticker] * len(dates), "close": closes})
+
+
+def close_panel(
+    tickers: list[str],
+    start: date,
+    end: date,
+) -> pl.DataFrame:
+    """Daily closes: processed parquet first, yfinance fallback per missing ticker."""
+    if not tickers:
+        return _EMPTY_PANEL.clone()
+
+    processed = _close_panel_processed(tickers, start, end)
+    parts: list[pl.DataFrame] = []
+
+    for ticker in tickers:
+        proc_sub = processed.filter(pl.col("ticker") == ticker) if processed.height else _EMPTY_PANEL.clone()
+        if proc_sub.is_empty():
+            yf = _yfinance_ticker_closes(ticker, start, end)
+            if yf.height:
+                parts.append(yf)
+            continue
+
+        parts.append(proc_sub)
+        proc_max = proc_sub["date"].max()
+        if proc_max is not None and proc_max < end:
+            gap_start = proc_max + timedelta(days=1)
+            yf = _yfinance_ticker_closes(ticker, gap_start, end)
+            if yf.height:
+                parts.append(yf)
+
+    if not parts:
+        return _EMPTY_PANEL.clone()
+
+    return (
+        pl.concat(parts)
+        .unique(subset=["date", "ticker"], keep="first")
+        .sort("date", "ticker")
+    )
 
 
 def _yfinance_last_close(ticker: str, *, lookback_days: int = 7) -> tuple[float | None, date | None]:

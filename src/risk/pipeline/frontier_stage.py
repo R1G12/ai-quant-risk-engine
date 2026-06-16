@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from src.features.wide_returns import load_returns_wide
-from src.risk.correlations.covariance import ledoit_wolf_shrinkage, sample_covariance_matrix
+from src.risk.correlations.covariance import (
+    align_optimization_tickers,
+    ledoit_wolf_shrinkage,
+    sample_covariance_matrix,
+)
 from src.risk.optimization.constraints import PortfolioConstraints
 from src.risk.optimization.frontier import efficient_frontier
 from src.risk.pipeline._io import write_single_parquet
@@ -23,8 +27,9 @@ def run() -> None:
 
     ensure_dir(RISK_FRONTIER_DIR)
 
-    tickers = list(load_weights(app).keys())
-    wide = load_returns_wide(tickers)
+    holdings_tickers = list(load_weights(app).keys())
+    wide = load_returns_wide(holdings_tickers)
+    tickers = align_optimization_tickers(wide, holdings_tickers, context="efficient_frontier")
     cov = sample_covariance_matrix(wide, tickers)
     if app.risk.optimization.shrinkage == "ledoit_wolf":
         cov = ledoit_wolf_shrinkage(cov)

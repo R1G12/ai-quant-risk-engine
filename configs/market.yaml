@@ -1,15 +1,16 @@
-source: sample
+source: yfinance
 tickers:
-  - AAPL
-  - MSFT
-  - XOM
-  - GS
-  - JPM
-# Omit pinning for a rolling ~1Y window (see use_rolling_window in params.yaml).
+- CVX
+- XOM
+- TSLA
+- ARKX
+- SMH
+- JEDI
+- LMT
 use_rolling_window: true
 rolling_days: 365
-start_date: "2024-01-01"
-end_date: "2024-03-31"
+start_date: '2025-06-14'
+end_date: '2026-06-14'
 partition_freq: month
 compression: zstd
 default_sentiment_ticker: MARKET

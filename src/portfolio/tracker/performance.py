@@ -9,9 +9,9 @@ import polars as pl
 
 from src.analytics.data_bounds import detect_data_bounds
 from src.features.wide_returns import load_returns_wide
+from src.market.adapters.yfinance import download_symbol_history, yfinance_close_series, yfinance_scalar_float
 from src.portfolio.tracker.fx import FxRateTable
-from src.portfolio.tracker.prices import close_panel
-from src.portfolio.tracker.schema import cash_flow, signed_quantity_delta
+from src.portfolio.tracker.schema import cash_flow, economic_position_delta
 from src.risk.portfolio.weights_loader import load_optimization_weights
 from src.utils.config import AppConfig
 
@@ -23,10 +23,16 @@ class ComparisonBounds:
 
 
 def tracker_comparison_bounds(trades: pl.DataFrame, app: AppConfig) -> ComparisonBounds:
-    """Date window for Tracker comparison UI."""
+    """Date window for Tracker comparison UI.
+
+    Extends through yesterday and the last trade date. Unlike the main pipeline
+    slider, does not cap *down* to stale processed-market rows for book tickers.
+    """
     pipeline = detect_data_bounds(app.research.meta.experiment_id)
+    yesterday = date.today() - timedelta(days=1)
+
     min_d = pipeline.min_date
-    max_d = pipeline.max_date
+    max_d = max(pipeline.max_date, yesterday)
 
     if trades.height:
         first = trades["trade_date"].min()
@@ -34,15 +40,9 @@ def tracker_comparison_bounds(trades: pl.DataFrame, app: AppConfig) -> Compariso
         if first is not None:
             min_d = max(min_d, first)
         if last is not None:
-            max_d = min(max_d, last)
+            max_d = max(max_d, last, yesterday)
 
-    tickers = trades["ticker"].unique().to_list() if trades.height else []
-    if tickers:
-        panel = close_panel(tickers, min_d, max_d)
-        if panel.height:
-            panel_max = panel["date"].max()
-            if panel_max is not None:
-                max_d = min(max_d, panel_max)
+    max_d = min(max_d, yesterday)
 
     if min_d > max_d:
         max_d = min_d
@@ -60,6 +60,56 @@ def _weighted_portfolio_returns(wide: pl.DataFrame, weights: dict[str, float]) -
         .select("date", "daily_return")
         .sort("date")
     )
+
+
+def _indexed_equity_from_returns(rets: pl.DataFrame) -> pl.DataFrame:
+    """Cumulative product of daily_return, indexed to 100 at first row."""
+    if rets.is_empty():
+        return pl.DataFrame(schema={"date": pl.Date, "daily_return": pl.Float64, "equity_indexed": pl.Float64})
+    rets = rets.with_columns((1.0 + pl.col("daily_return")).cum_prod().alias("growth"))
+    base = float(rets["growth"][0])
+    if abs(base) < 1e-12:
+        base = 1.0
+    return rets.with_columns((100.0 * pl.col("growth") / base).alias("equity_indexed"))
+
+
+def _benchmark_returns_from_yfinance(ticker: str, start: date, end: date) -> pl.DataFrame:
+    """Daily returns for benchmark ticker when absent from risk_dataset."""
+    buffer_start = start - timedelta(days=7)
+    hist = download_symbol_history(ticker, buffer_start, end)
+    series = yfinance_close_series(hist)
+    if series is None or series.empty:
+        return pl.DataFrame(schema={"date": pl.Date, "daily_return": pl.Float64})
+
+    closes = [yfinance_scalar_float(v) for v in series.tolist()]
+    dates = [d.date() if hasattr(d, "date") else d for d in series.index]
+    df = pl.DataFrame({"date": dates, "close": closes}).sort("date")
+    df = df.with_columns((pl.col("close") / pl.col("close").shift(1) - 1.0).alias("daily_return"))
+    return df.select("date", "daily_return").filter(pl.col("date") >= start, pl.col("date") <= end)
+
+
+def benchmark_equity_curve(app: AppConfig, start: date, end: date) -> pl.DataFrame:
+    """Cumulative buy-and-hold benchmark (e.g. SPY), indexed to 100 at range start."""
+    empty = pl.DataFrame(schema={"date": pl.Date, "daily_return": pl.Float64, "equity_indexed": pl.Float64})
+    ticker = app.tracker.benchmark_ticker
+    if not ticker:
+        return empty
+
+    wide = load_returns_wide([ticker])
+    if wide.is_empty() or ticker not in wide.columns:
+        rets = _benchmark_returns_from_yfinance(ticker, start, end)
+        return _indexed_equity_from_returns(rets)
+
+    rets = (
+        wide.with_columns(pl.col(ticker).fill_null(0.0).alias("daily_return"))
+        .with_columns(pl.col("timestamp").dt.date().alias("date"))
+        .select("date", "daily_return")
+        .sort("date")
+        .filter(pl.col("date") >= start, pl.col("date") <= end)
+    )
+    if rets.is_empty():
+        rets = _benchmark_returns_from_yfinance(ticker, start, end)
+    return _indexed_equity_from_returns(rets)
 
 
 def model_equity_curve(app: AppConfig, start: date, end: date) -> pl.DataFrame:
@@ -132,7 +182,7 @@ def actual_equity_curve(
     d = curve_start
     while d <= end:
         for row in trade_by_date.get(d, []):
-            delta = signed_quantity_delta(row["side"], row["action"], row["quantity"])
+            delta = economic_position_delta(row["side"], row["action"], row["quantity"])
             ticker = row["ticker"]
             positions[ticker] = positions.get(ticker, 0.0) + delta
             if abs(positions[ticker]) < 1e-9:

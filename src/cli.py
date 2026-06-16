@@ -9,7 +9,7 @@ from pathlib import Path
 
 import typer
 
-from src.utils.config import apply_run_profile_env, load_app_config, load_run_config, run_profile_env
+from src.utils.config import apply_run_profile_env, load_app_config, load_run_config, run_profile_env, sync_run_profile_to_params
 
 app = typer.Typer(
     name="aqre",
@@ -120,6 +120,9 @@ def run_profile(
 
         apply_run_profile_env(run_cfg, force=True)
         app = load_app_config(profile_path)
+        synced = sync_run_profile_to_params(app)
+        if synced:
+            typer.echo(f"Synced DVC params: {', '.join(str(p.name) for p in synced)}")
         holdings = materialize_run(app)
         typer.echo(f"Prepared holdings: {holdings}")
     if pin_dates:
@@ -172,6 +175,9 @@ def prepare_cmd(
         raise typer.Exit(1)
     apply_run_profile_env(run_cfg, force=True)
     app = load_app_config(profile_path)
+    synced = sync_run_profile_to_params(app)
+    if synced:
+        typer.echo(f"Synced DVC params: {', '.join(str(p.name) for p in synced)}")
     path = materialize_run(app)
     typer.echo(f"Holdings written: {path}")
     try:

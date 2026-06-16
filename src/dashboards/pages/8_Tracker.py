@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-import plotly.express as px
 import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
@@ -129,8 +128,10 @@ with tab_charts:
         st.warning("No tickers in trade log.")
     else:
         pick = st.selectbox("Ticker", tickers, key="tracker_chart_ticker")
-        hist = price_history(pick, app)
         ticker_trades = trades.filter(pl.col("ticker") == pick)
+        first_trade = ticker_trades["trade_date"].min()
+        chart_start = first_trade - timedelta(days=7) if first_trade else None
+        hist = price_history(pick, app, start=chart_start)
 
         fig = go.Figure()
         if hist.height:
@@ -175,18 +176,46 @@ with tab_charts:
         st.plotly_chart(fig, width="stretch")
 
         if not closed_pos.is_empty() and "close_date" in closed_pos.columns:
-            cum = (
-                closed_pos.sort("close_date")
-                .with_columns(pl.col("realized_pnl").cum_sum().alias("cumulative_pnl"))
+            daily = (
+                closed_pos.group_by("close_date")
+                .agg(pl.col("realized_pnl").sum().alias("daily_pnl"))
+                .sort("close_date")
+                .with_columns(pl.col("daily_pnl").cum_sum().alias("cumulative_pnl"))
             )
-            bar = px.bar(
-                cum.to_pandas(),
-                x="close_date",
-                y="cumulative_pnl",
-                title=f"Cumulative realized P&L ({display_ccy}, closed lots)",
+            fig_pnl = go.Figure()
+            fig_pnl.add_trace(
+                go.Bar(
+                    x=daily["close_date"].to_list(),
+                    y=daily["daily_pnl"].to_list(),
+                    name="Daily realized",
+                    marker_color="steelblue",
+                )
             )
-            bar.update_layout(template="plotly_dark", height=360)
-            st.plotly_chart(bar, width="stretch")
+            fig_pnl.add_trace(
+                go.Scatter(
+                    x=daily["close_date"].to_list(),
+                    y=daily["cumulative_pnl"].to_list(),
+                    name="Cumulative",
+                    mode="lines+markers",
+                    yaxis="y2",
+                    line=dict(color="orange", width=2),
+                )
+            )
+            fig_pnl.update_layout(
+                template="plotly_dark",
+                title=f"Realized P&L ({display_ccy}, closed lots)",
+                height=360,
+                xaxis_title="Close date",
+                yaxis=dict(title="Daily P&L"),
+                yaxis2=dict(
+                    title="Cumulative P&L",
+                    overlaying="y",
+                    side="right",
+                ),
+                barmode="group",
+                legend=dict(orientation="h", yanchor="bottom", y=1.02),
+            )
+            st.plotly_chart(fig_pnl, width="stretch")
 
 with tab_model:
     model_weights, weight_label = load_optimization_weights(app)
@@ -267,6 +296,8 @@ with tab_model:
         curves = load_comparison_curves(app, trades, dr, portfolio_value)
         model_df = curves["model"]
         actual_df = curves["actual"]
+        benchmark_df = curves["benchmark"]
+        benchmark_label = app.tracker.benchmark_ticker or "Benchmark"
         first_trade = curves.get("first_trade_date")
 
         if first_trade and first_trade > start_d:
@@ -295,6 +326,16 @@ with tab_model:
                     name="Actual (trade ledger)",
                 )
             )
+        if benchmark_df.height:
+            fig.add_trace(
+                go.Scatter(
+                    x=benchmark_df["date"].to_list(),
+                    y=benchmark_df["equity_indexed"].to_list(),
+                    mode="lines",
+                    name=f"Benchmark ({benchmark_label})",
+                    line={"dash": "dot"},
+                )
+            )
         fig.update_layout(
             template="plotly_dark",
             title="Indexed performance (100 at range start)",
@@ -304,7 +345,7 @@ with tab_model:
         )
         st.plotly_chart(fig, width="stretch")
 
-        m1, m2 = st.columns(2)
+        m1, m2, m3 = st.columns(3)
         with m1:
             if model_df.height:
                 y_col = "equity_indexed" if "equity_indexed" in model_df.columns else "equity"
@@ -318,8 +359,14 @@ with tab_model:
                 st.metric(f"Actual return ({preset})", f"{ret:+.1f}%")
             else:
                 st.metric("Actual return", "n/a")
+        with m3:
+            if benchmark_df.height:
+                ret = float(benchmark_df["equity_indexed"][-1]) - 100.0
+                st.metric(f"{benchmark_label} return ({preset})", f"{ret:+.1f}%")
+            else:
+                st.metric(f"{benchmark_label} return", "n/a")
 
-        if model_df.is_empty() and actual_df.is_empty():
+        if model_df.is_empty() and actual_df.is_empty() and benchmark_df.is_empty():
             st.info(
                 "No performance data in this window. Run the pipeline through "
                 "`optimize_portfolios` and ensure market/returns exist for model; "

@@ -59,6 +59,17 @@ def signed_quantity_delta(side: str, action: str, quantity: float) -> float:
     raise ValueError(f"invalid side: {side}")
 
 
+def economic_position_delta(side: str, action: str, quantity: float) -> float:
+    """Signed position delta for NAV MTM (long +, short -)."""
+    side_l = side.lower()
+    action_l = action.lower()
+    if side_l == "long":
+        return quantity if action_l == "buy" else -quantity
+    if side_l == "short":
+        return -quantity if action_l == "sell" else quantity
+    raise ValueError(f"invalid side: {side}")
+
+
 def cash_flow(side: str, action: str, quantity: float, price: float, fees: float) -> float:
     """Cash received (+) or paid (-) for one trade."""
     side_l = side.lower()

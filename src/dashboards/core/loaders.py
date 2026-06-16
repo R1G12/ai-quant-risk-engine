@@ -26,7 +26,8 @@ def load_kpis(app: AppConfig, date_range: DateRange | None) -> WindowKpis:
 
 def load_bounds(app: AppConfig):
     raw = detect_data_bounds(app.research.meta.experiment_id)
-    return raw, slider_bounds(raw, include_today_if_live=False)
+    include_today = app.market.source == "yfinance"
+    return raw, slider_bounds(raw, include_today_if_live=include_today)
 
 
 def load_copilot_context(app: AppConfig, date_range: DateRange | None = None) -> PortfolioContext:
