@@ -1,16 +1,16 @@
 source: yfinance
 tickers:
-- CVX
-- XOM
-- TSLA
+- VUG
+- SCHG
+- ^GSPC
+- GS
+- LMT
 - ARKX
 - SMH
-- JEDI
-- LMT
 use_rolling_window: true
 rolling_days: 365
-start_date: '2025-06-14'
-end_date: '2026-06-14'
+start_date: '2025-06-17'
+end_date: '2026-06-17'
 partition_freq: month
 compression: zstd
 default_sentiment_ticker: MARKET

@@ -5,7 +5,7 @@
 mode: live  # demo | live
 
 market:
-  tickers: ["CVX", "XOM", "TSLA", "ARKX", "SMH", "JEDI", "LMT"]
+  tickers: ["VUG", "SCHG", "^GSPC", "GS", "LMT", "ARKX", "SMH"]
   use_rolling_window: true
   rolling_days: 365
 
@@ -13,7 +13,7 @@ portfolio:
   weighting: optimised  # equal | manual | partial | optimised
   allow_shorts: true
   max_gross_per_ticker: 0.5
-  position_sides: {"CVX": "long",  "XOM": "long", "TSLA": "long", "ARKX": "long", "SMH": "long", "JEDI": "long", "LMT": "long"}
+  position_sides: {"VUG": "long", "SCHG": "long", "GS": "long",  "LMT": "long", "ARKX": "long", "SMH": "long", "^GSPC": "long"}
   manual_weights: {}
   anchor_weights:
   risk_free: 0.03

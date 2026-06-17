@@ -3,15 +3,24 @@
 from pathlib import Path
 
 import polars as pl
+import pytest
 
 from src.market.clean import clean_market_data
 from src.market.ingest import ingest_market_data
+from tests.helpers.platform_fixtures import CI_SAMPLE_TICKERS
 
 
-def test_ingest_and_clean_sample_pipeline(tmp_path: Path, monkeypatch) -> None:
+@pytest.fixture
+def sample_market_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Isolate sample ingest from synced params.yaml / live run.yaml tickers."""
     monkeypatch.setenv("MARKET_SOURCE", "sample")
-    monkeypatch.setenv("AQRE_SKIP_TICKER_VALIDATION", "1")
-    monkeypatch.setattr("src.utils.config.load_run_config", lambda *_a, **_k: None)
+    monkeypatch.setenv("RUN_PROFILE", "configs/run.ci.yaml")
+    monkeypatch.setenv("MARKET_PIN_DATES", "1")
+
+
+def test_ingest_and_clean_sample_pipeline(
+    tmp_path: Path, sample_market_env: None,
+) -> None:
     raw = tmp_path / "raw" / "market"
     processed = tmp_path / "processed" / "market"
 
@@ -22,4 +31,7 @@ def test_ingest_and_clean_sample_pipeline(tmp_path: Path, monkeypatch) -> None:
     lf = pl.scan_parquet(str(processed / "**" / "*.parquet"))
     df = lf.select("ticker", "close").collect()
     assert df.height > 0
-    assert "AAPL" in df["ticker"].to_list()
+    tickers = set(df["ticker"].unique().to_list())
+    assert tickers.issubset(set(CI_SAMPLE_TICKERS))
+    assert len(tickers) >= 2
+    assert "AAPL" in tickers
